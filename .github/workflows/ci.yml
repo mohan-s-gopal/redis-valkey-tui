@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build
+        run: go build -o valkys .
+
+      - name: Test build
+        run: ./valkys -help
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+
+      - name: Build for multiple platforms
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o valkys-linux-amd64 .
+          GOOS=darwin GOARCH=amd64 go build -o valkys-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o valkys-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -o valkys-windows-amd64.exe .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: valkys-binaries
+          path: |
+            valkys-linux-amd64
+            valkys-darwin-amd64
+            valkys-darwin-arm64
+            valkys-windows-amd64.exe
