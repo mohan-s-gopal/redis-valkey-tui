@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"valkys/internal/config"
+	"redis-cli-dashboard/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )

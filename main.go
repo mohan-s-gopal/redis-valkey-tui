@@ -1,7 +1,7 @@
 package main
 
 import (
-	"valkys/cmd"
+	"redis-cli-dashboard/cmd"
 )
 
 func main() {

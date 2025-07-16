@@ -1,7 +1,7 @@
-# valkys Feature Documentation
+# redis-cli-dashboard Feature Documentation
 
 ## Overview
-valkys is an advanced TUI (Terminal User Interface) client for Redis and Valkey, inspired by RedisInsight and k9s. It provides a comprehensive set of features for managing, monitoring, and analyzing Redis data.
+redis-cli-dashboard is an advanced TUI (Terminal User Interface) client for Redis and Valkey, inspired by RedisInsight and k9s. It provides a comprehensive set of features for managing, monitoring, and analyzing Redis data.
 
 ## Core Features
 

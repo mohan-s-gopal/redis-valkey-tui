@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Demo script for valkys features
+# Demo script for redis-cli-dashboard features
 
-echo "🚀 valkys - Advanced Redis/Valkey TUI Client Demo"
+echo "🚀 redis-cli-dashboard - Advanced Redis/Valkey TUI Client Demo"
 echo "================================================="
 echo ""
 
@@ -39,8 +39,8 @@ echo "     • Authentication support"
 echo ""
 
 echo "🎯 Quick Start:"
-echo "  ./valkys-enhanced                    # Main menu interface"
-echo "  ./valkys-enhanced -help             # Show full help"
+echo "  ./redis-cli-dashboard-enhanced                    # Main menu interface"
+echo "  ./redis-cli-dashboard-enhanced -help             # Show full help"
 echo ""
 
 echo "⌨️  Navigation:"
@@ -71,6 +71,6 @@ echo "  • Stream (basic support)"
 echo ""
 
 echo "🚀 To start the application:"
-echo "  ./valkys-enhanced"
+echo "  ./redis-cli-dashboard-enhanced"
 echo ""
 echo "Happy Redis management! 🎉"

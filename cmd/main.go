@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"valkys/internal/config"
-	"valkys/internal/ui"
+	"redis-cli-dashboard/internal/config"
+	"redis-cli-dashboard/internal/ui"
 )
 
 // Main is the main entry point
@@ -53,9 +53,9 @@ func Main() {
 }
 
 func showHelp() {
-	fmt.Print(`valkys - A k9s-inspired TUI client for Redis/Valkey
+	fmt.Print(`redis-cli-dashboard - A k9s-inspired TUI client for Redis/Valkey
 
-Usage: valkys [options]
+Usage: redis-cli-dashboard [options]
 
 Options:
   -host string
@@ -100,10 +100,10 @@ Key Bindings (CLI view):
   Ctrl+L      Clear screen
 
 Examples:
-  valkys                                    # Connect to localhost:6379
-  valkys -host redis.example.com -port 6380  # Connect to remote server
-  valkys -password mypassword -db 1         # Connect with auth and DB selection
+  redis-cli-dashboard                                    # Connect to localhost:6379
+  redis-cli-dashboard -host redis.example.com -port 6380  # Connect to remote server
+  redis-cli-dashboard -password mypassword -db 1         # Connect with auth and DB selection
 
-For more information, visit: https://github.com/username/valkys
+For more information, visit: https://github.com/username/redis-cli-dashboard
 `)
 }

@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"valkys/internal/config"
+	"redis-cli-dashboard/internal/config"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -61,7 +61,7 @@ func (v *ConfigView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 
 // loadConfig loads and displays the configuration
 func (v *ConfigView) loadConfig() {
-	text := `[yellow]Valkys Configuration[white]
+	text := `[yellow]redis-cli-dashboard Configuration[white]
 
 [green]Redis Connection:[white]
   Host: [cyan]%s[white]

@@ -1,9 +1,9 @@
-# Valkys Release Notes
+# redis-cli-dashboard Release Notes
 
 ## Version 1.0.0 - Initial Release
 
 ### Overview
-Valkys is a comprehensive Terminal User Interface (TUI) client for Redis and Valkey, designed to provide advanced features inspired by RedisInsight while maintaining the efficiency and simplicity of a command-line interface.
+redis-cli-dashboard is a comprehensive Terminal User Interface (TUI) client for Redis and Valkey, designed to provide advanced features inspired by RedisInsight while maintaining the efficiency and simplicity of a command-line interface.
 
 ### Features
 
@@ -69,18 +69,18 @@ Valkys is a comprehensive Terminal User Interface (TUI) client for Redis and Val
 ```bash
 # Clone and setup
 git clone <repository-url>
-cd valkys
+cd redis-cli-dashboard
 ./setup.sh
 
 # Or manually
 go mod download
-go build -o valkys .
+go build -o redis-cli-dashboard .
 ```
 
 #### Using Docker
 ```bash
-docker build -t valkys .
-docker run -it valkys
+docker build -t redis-cli-dashboard .
+docker run -it redis-cli-dashboard
 ```
 
 ### Usage
@@ -88,17 +88,17 @@ docker run -it valkys
 #### Basic Usage
 ```bash
 # Connect to local Redis
-./valkys
+./redis-cli-dashboard
 
 # Connect to remote server
-./valkys -host redis.example.com -port 6380
+./redis-cli-dashboard -host redis.example.com -port 6380
 
 # Connect with authentication
-./valkys -password mypassword -db 1
+./redis-cli-dashboard -password mypassword -db 1
 ```
 
 #### Configuration
-Create `~/.valkys/config.json`:
+Create `~/.redis-cli-dashboard/config.json`:
 ```json
 {
   "host": "localhost",

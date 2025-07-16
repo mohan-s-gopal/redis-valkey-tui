@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Setup script for valkys development
+# Setup script for redis-cli-dashboard development
 
 set -e
 
-echo "Setting up valkys development environment..."
+echo "Setting up redis-cli-dashboard development environment..."
 
 # Check if Go is installed
 if ! command -v go &> /dev/null; then
@@ -28,7 +28,7 @@ echo "Installing dependencies..."
 go mod download
 
 # Build the application
-echo "Building valkys..."
+echo "Building redis-cli-dashboard..."
 make build
 
 # Run tests
@@ -37,18 +37,18 @@ go test -v .
 
 # Create example config
 echo "Creating example config..."
-mkdir -p ~/.valkys
-if [ ! -f ~/.valkys/config.json ]; then
-    cp config.example.json ~/.valkys/config.json
-    echo "Example config created at ~/.valkys/config.json"
+mkdir -p ~/.redis-cli-dashboard
+if [ ! -f ~/.redis-cli-dashboard/config.json ]; then
+    cp config.example.json ~/.redis-cli-dashboard/config.json
+    echo "Example config created at ~/.redis-cli-dashboard/config.json"
 fi
 
 echo ""
 echo "Setup complete! 🎉"
 echo ""
 echo "To get started:"
-echo "  ./valkys -help    # Show help"
-echo "  ./valkys          # Connect to localhost:6379"
+echo "  ./redis-cli-dashboard -help    # Show help"
+echo "  ./redis-cli-dashboard          # Connect to localhost:6379"
 echo "  make run          # Run with make"
 echo ""
 echo "For more information, see README.md and USAGE.md"

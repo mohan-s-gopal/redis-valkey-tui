@@ -1,4 +1,4 @@
-module valkys
+module redis-cli-dashboard
 
 go 1.21
 

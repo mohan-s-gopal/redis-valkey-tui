@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"valkys/internal/redis"
+	"redis-cli-dashboard/internal/redis"
 
 	"github.com/rivo/tview"
 )

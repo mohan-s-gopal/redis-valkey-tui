@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"valkys/internal/config"
-	"valkys/internal/redis"
+	"redis-cli-dashboard/internal/config"
+	"redis-cli-dashboard/internal/redis"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -333,7 +333,7 @@ func (a *App) refresh() {
 
 // getHelpText returns the help text
 func (a *App) getHelpText() string {
-	return `Valkys Help
+	return `redis-cli-dashboard Help
 
 Navigation:
   :keys       Switch to Keys view

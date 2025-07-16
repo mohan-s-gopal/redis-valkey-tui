@@ -100,5 +100,5 @@ func getConfigPath() string {
 	if err != nil {
 		return "./config.json"
 	}
-	return filepath.Join(homeDir, ".valkys", "config.json")
+	return filepath.Join(homeDir, ".redis-cli-dashboard", "config.json")
 }

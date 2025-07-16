@@ -1,5 +1,5 @@
 
-###  valkys
+###  redis-cli-dashboard
 
 > A powerful TUI client for Redis/Valkey — inspired by `k9s`.
 
@@ -61,9 +61,9 @@
 ---
 
 ````markdown
-# 🔧 valkys
+# 🔧 redis-cli-dashboard
 
-A fast and minimal **TUI (terminal UI)** client for [Valkey](https://valkey.io) and Redis, inspired by [`k9s`](https://github.com/derailed/k9s). Built with Go and `tview`, `valkys` gives you a real-time interactive interface to explore keys and manage data across all Redis types.
+A fast and minimal **TUI (terminal UI)** client for [Valkey](https://valkey.io) and Redis, inspired by [`k9s`](https://github.com/derailed/k9s). Built with Go and `tview`, `redis-cli-dashboard` gives you a real-time interactive interface to explore keys and manage data across all Redis types.
 
 Here's a project name and feature list for your Redis/Valkey TUI tool:
 
@@ -97,8 +97,8 @@ Here's a project name and feature list for your Redis/Valkey TUI tool:
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/valkys.git
-cd valkys
+git clone https://github.com/your-username/redis-cli-dashboard.git
+cd redis-cli-dashboard
 ```
 
 ### 2. Build
@@ -108,26 +108,26 @@ Make sure you have [Go](https://golang.org/dl/) 1.21+ installed.
 ```bash
 make build
 # or
-go build -o valkys main.go config.go cli.go
+go build -o redis-cli-dashboard main.go config.go cli.go
 ```
 
 ### 3. Run
 
 ```bash
-./valkys
+./redis-cli-dashboard
 ```
 
 ## 🚀 Usage
 
 ### Basic Usage
 ```bash
-./valkys                                    # Connect to localhost:6379
-./valkys -host redis.example.com -port 6380  # Connect to remote server
-./valkys -password mypassword -db 1         # Connect with auth and DB selection
+./redis-cli-dashboard                                    # Connect to localhost:6379
+./redis-cli-dashboard -host redis.example.com -port 6380  # Connect to remote server
+./redis-cli-dashboard -password mypassword -db 1         # Connect with auth and DB selection
 ```
 
 ### Configuration File
-Create `~/.valkys/config.json`:
+Create `~/.redis-cli-dashboard/config.json`:
 ```json
 {
   "redis": {

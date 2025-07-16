@@ -1,4 +1,4 @@
-# valkys Usage Guide
+# redis-cli-dashboard Usage Guide
 
 ## Quick Start
 
@@ -9,12 +9,12 @@
 
 2. **Run with default settings:**
    ```bash
-   ./valkys
+   ./redis-cli-dashboard
    ```
 
 3. **Run with custom Redis connection:**
    ```bash
-   ./valkys -host redis.example.com -port 6380 -password mypassword
+   ./redis-cli-dashboard -host redis.example.com -port 6380 -password mypassword
    ```
 
 ## Command Line Options
@@ -27,7 +27,7 @@
 
 ## Configuration File
 
-valkys will look for a configuration file at `~/.valkys/config.json`. Example:
+redis-cli-dashboard will look for a configuration file at `~/.redis-cli-dashboard/config.json`. Example:
 
 ```json
 {
@@ -48,7 +48,7 @@ Command line options override config file values.
 
 ## Application Modes
 
-valkys features multiple modes for different tasks:
+redis-cli-dashboard features multiple modes for different tasks:
 
 ### 1. Key Browser Mode (Default)
 - **Purpose**: Browse, search, and manage Redis keys
@@ -97,7 +97,7 @@ valkys features multiple modes for different tasks:
 ## Navigation
 
 ### Main Menu
-When you start valkys, you'll see the main menu with 5 options:
+When you start redis-cli-dashboard, you'll see the main menu with 5 options:
 - Use `↑/↓` to navigate
 - Press `Enter` to select
 - Press `q` to quit
@@ -256,17 +256,17 @@ When you start valkys, you'll see the main menu with 5 options:
 ### Basic Usage
 ```bash
 # Connect to local Redis
-./valkys
+./redis-cli-dashboard
 
 # Connect to remote Redis with authentication
-./valkys -host redis.example.com -port 6380 -password secret123
+./redis-cli-dashboard -host redis.example.com -port 6380 -password secret123
 
 # Connect to specific database
-./valkys -db 2
+./redis-cli-dashboard -db 2
 ```
 
 ### Using Configuration File
-Create `~/.valkys/config.json`:
+Create `~/.redis-cli-dashboard/config.json`:
 ```json
 {
   "redis": {
@@ -280,16 +280,16 @@ Create `~/.valkys/config.json`:
 
 Then simply run:
 ```bash
-./valkys
+./redis-cli-dashboard
 ```
 
 ### Overriding Configuration
 ```bash
 # Use config file but override the database
-./valkys -db 3
+./redis-cli-dashboard -db 3
 
 # Use config file but override the host
-./valkys -host localhost
+./redis-cli-dashboard -host localhost
 ```
 
 ## Troubleshooting

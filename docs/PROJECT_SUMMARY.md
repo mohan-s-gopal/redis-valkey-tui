@@ -1,12 +1,12 @@
-# valkys Project Summary
+# redis-cli-dashboard Project Summary
 
 ## Overview
-valkys is an advanced Terminal User Interface (TUI) client for Redis and Valkey, inspired by RedisInsight and k9s. It provides a comprehensive, feature-rich interface for managing, monitoring, and analyzing Redis/Valkey data through a terminal interface.
+redis-cli-dashboard is an advanced Terminal User Interface (TUI) client for Redis and Valkey, inspired by RedisInsight and k9s. It provides a comprehensive, feature-rich interface for managing, monitoring, and analyzing Redis/Valkey data through a terminal interface.
 
 ## Project Structure
 
 ```
-valkys/
+redis-cli-dashboard/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml              # GitHub Actions CI/CD workflow
@@ -148,9 +148,9 @@ make clean         # Clean build artifacts
 - **CI/CD pipeline**: GitHub Actions for testing and building
 
 ### Installation Methods
-1. **Direct build**: `go build -o valkys`
+1. **Direct build**: `go build -o redis-cli-dashboard`
 2. **Make build**: `make build`
-3. **Docker**: `docker build -t valkys .`
+3. **Docker**: `docker build -t redis-cli-dashboard .`
 4. **Setup script**: `./setup.sh` (includes dependencies)
 
 ## 🎯 **Advanced Features Implemented**
@@ -201,10 +201,10 @@ make clean         # Clean build artifacts
 make build
 
 # 2. Run with default settings (connects to localhost:6379)
-./valkys-enhanced
+./redis-cli-dashboard-enhanced
 
 # 3. Run with custom connection
-./valkys-enhanced -host redis.example.com -port 6380 -password secret
+./redis-cli-dashboard-enhanced -host redis.example.com -port 6380 -password secret
 ```
 
 ### Development Setup
@@ -214,8 +214,8 @@ make build
 
 # Manual setup
 go mod tidy
-go build -o valkys-enhanced
-./valkys-enhanced -help
+go build -o redis-cli-dashboard-enhanced
+./redis-cli-dashboard-enhanced -help
 ```
 
 ### Demo
@@ -224,7 +224,7 @@ go build -o valkys-enhanced
 ./demo.sh
 
 # Interactive demo
-./valkys-enhanced
+./redis-cli-dashboard-enhanced
 ```
 
 ## 📊 **Feature Comparison**
@@ -252,7 +252,7 @@ go build -o valkys-enhanced
 
 ## 🎉 **Summary**
 
-valkys has evolved from a simple Redis TUI client into a comprehensive, feature-rich application that rivals GUI tools like RedisInsight while maintaining the speed and efficiency of a terminal interface. 
+redis-cli-dashboard has evolved from a simple Redis TUI client into a comprehensive, feature-rich application that rivals GUI tools like RedisInsight while maintaining the speed and efficiency of a terminal interface. 
 
 **Key Achievements:**
 - ✅ **Complete feature implementation** matching and exceeding initial requirements

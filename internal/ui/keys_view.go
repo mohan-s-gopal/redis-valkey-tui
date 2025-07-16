@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"valkys/internal/config"
-	"valkys/internal/redis"
+	"redis-cli-dashboard/internal/config"
+	"redis-cli-dashboard/internal/redis"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

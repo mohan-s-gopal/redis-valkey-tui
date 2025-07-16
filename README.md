@@ -1,4 +1,4 @@
-# Valkys - A k9s-inspired TUI Redis/Valkey Client
+# redis-cli-dashboard - A k9s-inspired TUI Redis/Valkey Client
 
 [![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -33,7 +33,7 @@ A powerful Terminal User Interface (TUI) client for Redis and Valkey, inspired b
 ## 📁 Project Structure
 
 ```
-valkys/
+redis-cli-dashboard/
 ├── cmd/                    # Application entry point
 │   └── main.go            # Main command package
 ├── internal/              # Private application code
@@ -81,8 +81,8 @@ valkys/
 #### Option 1: Quick Setup
 ```bash
 # Clone the repository
-git clone https://github.com/username/valkys.git
-cd valkys
+git clone https://github.com/username/redis-cli-dashboard.git
+cd redis-cli-dashboard
 
 # Run setup script
 ./scripts/setup.sh
@@ -97,32 +97,32 @@ go mod download
 make build
 
 # Run the application
-./build/valkys
+./build/redis-cli-dashboard
 ```
 
 #### Option 3: Using Docker
 ```bash
 # Build Docker image
-docker build -t valkys .
+docker build -t redis-cli-dashboard .
 
 # Run with Docker
-docker run -it --network host valkys
+docker run -it --network host redis-cli-dashboard
 ```
 
 ### Basic Usage
 
 ```bash
 # Connect to local Redis (default: localhost:6379)
-valkys
+redis-cli-dashboard
 
 # Connect to remote server
-valkys -host redis.example.com -port 6380
+redis-cli-dashboard -host redis.example.com -port 6380
 
 # Connect with authentication
-valkys -password mypassword -db 1
+redis-cli-dashboard -password mypassword -db 1
 
 # Show help
-valkys -help
+redis-cli-dashboard -help
 ```
 
 ## 🎮 Navigation
@@ -165,7 +165,7 @@ Press `:` to enter command mode, then type:
 ## ⚙️ Configuration
 
 ### Configuration File
-Valkys looks for configuration at `~/.valkys/config.json`:
+redis-cli-dashboard looks for configuration at `~/.redis-cli-dashboard/config.json`:
 
 ```json
 {
@@ -191,7 +191,7 @@ Valkys looks for configuration at `~/.valkys/config.json`:
 Command line options override configuration file values:
 
 ```bash
-valkys -host localhost -port 6379 -password secret -db 1
+redis-cli-dashboard -host localhost -port 6379 -password secret -db 1
 ```
 
 ## 🔧 Development

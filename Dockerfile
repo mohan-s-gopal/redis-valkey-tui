@@ -11,7 +11,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o valkys .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o redis-cli-dashboard .
 
 # Final stage
 FROM alpine:latest
@@ -20,7 +20,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/valkys .
+COPY --from=builder /app/redis-cli-dashboard .
 
 # Run the application
-CMD ["./valkys"]
+CMD ["./redis-cli-dashboard"]

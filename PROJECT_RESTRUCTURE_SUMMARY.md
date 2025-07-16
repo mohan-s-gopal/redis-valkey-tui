@@ -1,14 +1,14 @@
-# Valkys Project Restructuring Summary
+# redis-cli-dashboard Project Restructuring Summary
 
 ## 🎯 **Completed: Complete Project Restructuring**
 
-The valkys TUI Redis/Valkey client has been successfully restructured with a professional Go project layout and k9s-inspired interface design.
+The redis-cli-dashboard TUI Redis/Valkey client has been successfully restructured with a professional Go project layout and k9s-inspired interface design.
 
 ## 📁 **New Project Structure**
 
 ### **Organized Architecture**
 ```
-valkys/
+redis-cli-dashboard/
 ├── cmd/main.go              # Application entry point
 ├── internal/
 │   ├── config/config.go     # Configuration management
@@ -107,7 +107,7 @@ valkys/
 
 ### **Configuration Management**
 - **Structured Config**: Separate Redis and UI configurations
-- **File-based Config**: JSON configuration at `~/.valkys/config.json`
+- **File-based Config**: JSON configuration at `~/.redis-cli-dashboard/config.json`
 - **CLI Overrides**: Command-line flags override config values
 - **Default Values**: Sensible defaults for all settings
 
@@ -153,7 +153,7 @@ valkys/
 
 ### **From**: Flat structure with all files in root
 ```
-valkys/
+redis-cli-dashboard/
 ├── main.go
 ├── enhanced_app.go
 ├── config.go
@@ -165,7 +165,7 @@ valkys/
 
 ### **To**: Professional Go project layout
 ```
-valkys/
+redis-cli-dashboard/
 ├── cmd/main.go
 ├── internal/{config,redis,ui}/
 ├── docs/
@@ -174,7 +174,7 @@ valkys/
 └── ...
 ```
 
-The valkys project now has a **professional, maintainable, and extensible architecture** that provides an **intuitive k9s-inspired interface** for Redis/Valkey management. The restructured codebase is ready for production use and future enhancements.
+The redis-cli-dashboard project now has a **professional, maintainable, and extensible architecture** that provides an **intuitive k9s-inspired interface** for Redis/Valkey management. The restructured codebase is ready for production use and future enhancements.
 
 ---
 

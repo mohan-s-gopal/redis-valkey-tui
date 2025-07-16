@@ -1,10 +1,10 @@
-# Makefile for valkys
+# Makefile for redis-cli-dashboard
 
 .PHONY: build run clean test install deps
 
 # Build the application
 build:
-	go build -o valkys .
+	go build -o redis-cli-dashboard .
 
 # Run the application
 run:
@@ -12,7 +12,7 @@ run:
 
 # Clean build artifacts
 clean:
-	rm -f valkys
+	rm -f redis-cli-dashboard
 
 # Run tests
 test:
@@ -29,10 +29,10 @@ install:
 
 # Build for multiple platforms
 build-all:
-	GOOS=linux GOARCH=amd64 go build -o valkys-linux-amd64 .
-	GOOS=darwin GOARCH=amd64 go build -o valkys-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o valkys-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build -o valkys-windows-amd64.exe .
+	GOOS=linux GOARCH=amd64 go build -o redis-cli-dashboard-linux-amd64 .
+	GOOS=darwin GOARCH=amd64 go build -o redis-cli-dashboard-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -o redis-cli-dashboard-darwin-arm64 .
+	GOOS=windows GOARCH=amd64 go build -o redis-cli-dashboard-windows-amd64.exe .
 
 # Format code
 fmt:
