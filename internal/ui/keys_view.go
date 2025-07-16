@@ -2,13 +2,12 @@ package ui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
-	"time"
 
 	"redis-cli-dashboard/internal/config"
 	"redis-cli-dashboard/internal/redis"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -20,13 +19,13 @@ type KeysView struct {
 
 	// Components
 	flex      *tview.Flex
-	keyList   *tview.List
+	table     *tview.Table
 	keyDetail *tview.TextView
 	filter    *tview.InputField
 
 	// State
-	keys         []string
-	filteredKeys []string
+	keys         []*redis.KeyInfo
+	filteredKeys []*redis.KeyInfo
 	selectedKey  string
 	filterText   string
 
@@ -45,347 +44,297 @@ func NewKeysView(redisClient *redis.Client, cfg *config.Config) *KeysView {
 	view.loadKeys()
 
 	return view
-}
-
-// setupUI initializes the UI components
+}	// setupUI initializes the UI components
 func (v *KeysView) setupUI() {
-	// Create key list
-	v.keyList = tview.NewList().
-		SetHighlightFullLine(true).
-		SetSelectedFunc(v.selectKey)
+	// Create table for keys
+	v.table = tview.NewTable().
+		SetBorders(false).
+		SetFixed(1, 0).
+		SetSelectable(true, false)
 
-	v.keyList.SetInputCapture(v.handleKeyInput)
-	v.keyList.SetBorder(true).
-		SetTitle("Keys").
-		SetBorderPadding(0, 0, 1, 1)
+	// Set up headers
+	headers := []string{"Type", "Key", "TTL", "Size", "Encoding"}
+	for i, header := range headers {
+		v.table.SetCell(0, i,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+	}
 
-	// Create key detail view
+	// Handle selection changes (navigation with arrow keys)
+	v.table.SetSelectionChangedFunc(func(row, col int) {
+		if row > 0 && row <= len(v.filteredKeys) {
+			displayKeys := v.filteredKeys
+			if len(displayKeys) == 0 {
+				displayKeys = v.keys
+			}
+			keyInfo := displayKeys[row-1]
+			if keyInfo != nil {
+				v.selectedKey = keyInfo.Name
+				v.showKeyDetails(keyInfo.Name)
+			}
+		}
+	})
+
+	// Handle enter key on selection
+	v.table.SetSelectedFunc(func(row, col int) {
+		if row > 0 && row <= len(v.filteredKeys) {
+			displayKeys := v.filteredKeys
+			if len(displayKeys) == 0 {
+				displayKeys = v.keys
+			}
+			keyInfo := displayKeys[row-1]
+			if keyInfo != nil {
+				v.selectedKey = keyInfo.Name
+				v.showKeyDetails(keyInfo.Name)
+			}
+		}
+	})
+
+	// Key detail view
 	v.keyDetail = tview.NewTextView().
 		SetDynamicColors(true).
-		SetScrollable(true).
-		SetWordWrap(true)
-
+		SetWrap(true)
 	v.keyDetail.SetBorder(true).
-		SetTitle("Key Details").
-		SetBorderPadding(0, 0, 1, 1)
+		SetTitle("Key Details")
 
-	// Create filter input
+	// Filter input
 	v.filter = tview.NewInputField().
 		SetLabel("Filter: ").
 		SetFieldWidth(30).
-		SetChangedFunc(v.filterChanged).
-		SetDoneFunc(v.filterDone)
+		SetDoneFunc(func(key tcell.Key) {
+			v.applyFilter(v.filter.GetText())
+		})
 
-	v.filter.SetBorder(true).
-		SetTitle("Filter").
-		SetBorderPadding(0, 0, 1, 1)
-
-	// Create main layout
+	// Main layout
 	v.flex = tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(v.keyList, 0, 1, true).
-		AddItem(v.keyDetail, 0, 1, false)
-
-	v.updateLayout()
+		SetDirection(tview.FlexRow)
+	
+	v.refreshLayout()
 }
 
-// updateLayout updates the layout based on filter visibility
-func (v *KeysView) updateLayout() {
+// refreshLayout updates the view layout
+func (v *KeysView) refreshLayout() {
 	v.flex.Clear()
 
-	if v.filterVisible {
-		leftPanel := tview.NewFlex().
-			SetDirection(tview.FlexRow).
-			AddItem(v.filter, 3, 0, false).
-			AddItem(v.keyList, 0, 1, true)
+	// Create main horizontal flex for splitting table and details
+	mainFlex := tview.NewFlex().
+		SetDirection(tview.FlexColumn)
 
-		v.flex.AddItem(leftPanel, 0, 1, true).
-			AddItem(v.keyDetail, 0, 1, false)
-	} else {
-		v.flex.AddItem(v.keyList, 0, 1, true).
-			AddItem(v.keyDetail, 0, 1, false)
+	// Left side with filter and table
+	leftFlex := tview.NewFlex().
+		SetDirection(tview.FlexRow)
+
+	// Add filter if visible
+	if v.filterVisible {
+		filterBox := tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(v.filter, 30, 0, true).
+			AddItem(nil, 0, 1, false)
+		leftFlex.AddItem(filterBox, 1, 0, true)
 	}
+
+	// Create table box with border
+	tableBox := tview.NewBox().
+		SetBorder(true).
+		SetTitle("Redis Keys")
+
+	// Add table with border
+	leftFlex.AddItem(tableBox, 0, 1, true)
+
+	// Make sure table fills the box
+	tableBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
+		innerX, innerY, innerWidth, innerHeight := tableBox.GetInnerRect()
+		v.table.SetRect(innerX, innerY, innerWidth, innerHeight)
+		v.table.Draw(screen)
+		return x, y, width, height
+	})
+
+	// Right side with key details
+	v.keyDetail.SetBorder(true).
+		SetTitle("Key Details")
+
+	// Set up the split view with good proportions
+	mainFlex.AddItem(leftFlex, 0, 2, true).        // Left side gets 2/3
+		AddItem(v.keyDetail, 0, 1, false)  // Right side gets 1/3
+
+	// Add the split view to the main flex
+	v.flex.AddItem(mainFlex, 0, 1, true)
+
+	// We've already added contentFlex to v.flex in the code above
 }
 
-// GetComponent returns the main component
+// GetComponent returns the view's main component
 func (v *KeysView) GetComponent() tview.Primitive {
 	return v.flex
 }
 
-// loadKeys loads keys from Redis
+// GetKeyCount returns the total number of keys
+func (v *KeysView) GetKeyCount() int {
+	return len(v.keys)
+}
+
+// GetFilter returns the current filter text
+func (v *KeysView) GetFilter() string {
+	return v.filterText
+}
+
+// loadKeys loads and displays Redis keys
 func (v *KeysView) loadKeys() {
 	keys, err := v.redis.GetKeys("*")
 	if err != nil {
-		v.keyDetail.SetText(fmt.Sprintf("[red]Error loading keys: %s", err))
 		return
 	}
 
-	sort.Strings(keys)
-	v.keys = keys
-	v.applyFilter()
-}
-
-// applyFilter applies the current filter to the keys
-func (v *KeysView) applyFilter() {
-	if v.filterText == "" {
-		v.filteredKeys = v.keys
-	} else {
-		v.filteredKeys = []string{}
-		for _, key := range v.keys {
-			if strings.Contains(strings.ToLower(key), strings.ToLower(v.filterText)) {
-				v.filteredKeys = append(v.filteredKeys, key)
-			}
-		}
-	}
-
-	v.updateKeyList()
-}
-
-// updateKeyList updates the key list display
-func (v *KeysView) updateKeyList() {
-	v.keyList.Clear()
-
-	for i, key := range v.filteredKeys {
-		// Get key info for display
+	v.keys = make([]*redis.KeyInfo, 0, len(keys))
+	for _, key := range keys {
 		info, err := v.redis.GetKeyInfo(key)
 		if err != nil {
-			v.keyList.AddItem(fmt.Sprintf("%s [red](error)", key), "", rune('0'+i%10), nil)
 			continue
 		}
-
-		// Format TTL
-		ttlStr := ""
-		if info.TTL > 0 {
-			ttlStr = fmt.Sprintf(" [yellow]TTL:%s", info.TTL.Truncate(time.Second))
-		} else if info.TTL == -1 {
-			ttlStr = " [green]∞"
-		}
-
-		// Format memory usage
-		memStr := ""
-		if info.MemoryUsage > 0 {
-			memStr = fmt.Sprintf(" [blue]%s", formatBytes(info.MemoryUsage))
-		}
-
-		displayText := fmt.Sprintf("%s [gray]%s%s%s", key, info.Type, ttlStr, memStr)
-		v.keyList.AddItem(displayText, "", rune('0'+i%10), nil)
+		v.keys = append(v.keys, info)
 	}
 
-	// Update title with count
-	title := fmt.Sprintf("Keys (%d/%d)", len(v.filteredKeys), len(v.keys))
-	if v.filterText != "" {
-		title += fmt.Sprintf(" [filter: %s]", v.filterText)
-	}
-	v.keyList.SetTitle(title)
+	v.refreshKeys()
 }
 
-// selectKey handles key selection
-func (v *KeysView) selectKey(index int, mainText, secondaryText string, shortcut rune) {
-	if index >= len(v.filteredKeys) {
-		return
+// refreshKeys updates the table with current keys
+func (v *KeysView) refreshKeys() {
+	// Clear existing rows
+	v.table.Clear()
+
+	// Set headers
+	headers := []string{"Type", "Key", "TTL", "Size", "Encoding"}
+	for i, header := range headers {
+		v.table.SetCell(0, i,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
 	}
 
-	v.selectedKey = v.filteredKeys[index]
-	v.showKeyDetails()
+	// Add key rows
+	displayKeys := v.filteredKeys
+	if len(displayKeys) == 0 {
+		displayKeys = v.keys
+	}
+
+	for i, key := range displayKeys {
+		row := i + 1
+		
+		// Type column with icon
+		typeIcon := v.getTypeIcon(key.Type)
+		v.table.SetCell(row, 0, tview.NewTableCell(typeIcon+" "+key.Type))
+		
+		// Key name
+		v.table.SetCell(row, 1, tview.NewTableCell(key.Name))
+		
+		// TTL
+		ttl := "-"
+		if key.TTL > 0 {
+			ttl = fmt.Sprintf("%ds", int64(key.TTL.Seconds()))
+		}
+		v.table.SetCell(row, 2, tview.NewTableCell(ttl))
+		
+		// Size
+		v.table.SetCell(row, 3, tview.NewTableCell(humanize.Bytes(uint64(key.MemoryUsage))))
+		
+		// Encoding
+		v.table.SetCell(row, 4, tview.NewTableCell(key.Encoding))
+	}
 }
 
-// showKeyDetails shows details for the selected key
-func (v *KeysView) showKeyDetails() {
-	if v.selectedKey == "" {
-		v.keyDetail.SetText("No key selected")
+// getTypeIcon returns an icon for the Redis key type
+func (v *KeysView) getTypeIcon(keyType string) string {
+	switch strings.ToLower(keyType) {
+	case "string":
+		return "📄"
+	case "hash":
+		return "📑"
+	case "list":
+		return "📝"
+	case "set":
+		return "📦"
+	case "zset":
+		return "📊"
+	case "stream":
+		return "📈"
+	default:
+		return "❓"
+	}
+}
+
+// showKeyDetails displays detailed information about a key
+func (v *KeysView) showKeyDetails(key string) {
+	if key == "" {
+		v.keyDetail.SetText("Select a key to view details")
 		return
 	}
 
-	// Get key info
-	info, err := v.redis.GetKeyInfo(v.selectedKey)
+	info, err := v.redis.GetKeyInfo(key)
 	if err != nil {
-		v.keyDetail.SetText(fmt.Sprintf("[red]Error getting key info: %s", err))
+		v.keyDetail.SetText(fmt.Sprintf("Error getting key details: %v", err))
 		return
 	}
 
-	// Get key value
-	value, err := v.redis.GetValue(v.selectedKey)
+	// Get key value based on type
+	value, err := v.redis.GetValue(key)
 	if err != nil {
-		value = fmt.Sprintf("[red]Error getting value: %s", err)
+		v.keyDetail.SetText(fmt.Sprintf("Error getting key value: %v", err))
+		return
 	}
 
-	// Format details
-	details := fmt.Sprintf(`[white]Key:[yellow] %s
-[white]Type:[yellow] %s
-[white]TTL:[yellow] %s
-[white]Memory:[yellow] %s
+	// Format TTL string
+	ttlStr := "never expires"
+	if info.TTL > 0 {
+		ttlStr = fmt.Sprintf("%v", info.TTL)
+	} else if info.TTL < 0 {
+		ttlStr = "no expiration"
+	}
 
-[white]Value:
-[green]%s`,
-		v.selectedKey,
+	details := fmt.Sprintf(`[yellow]Key:[white] %s
+[yellow]Type:[white] %s %s
+[yellow]TTL:[white] %s
+[yellow]Size:[white] %s
+[yellow]Encoding:[white] %s
+
+[yellow]Value:[white]
+%s`,
+		info.Name,
+		v.getTypeIcon(info.Type),
 		info.Type,
-		formatTTL(info.TTL),
-		formatBytes(info.MemoryUsage),
-		value)
+		ttlStr,
+		humanize.Bytes(uint64(info.MemoryUsage)),
+		info.Encoding,
+		value,
+	)
 
 	v.keyDetail.SetText(details)
 }
 
-// handleKeyInput handles key input for the keys view
-func (v *KeysView) handleKeyInput(event *tcell.EventKey) *tcell.EventKey {
-	switch event.Rune() {
-	case '/':
-		v.showFilter()
-		return nil
-	case 'r':
-		v.Refresh()
-		return nil
-	case 'd':
-		v.deleteKey()
-		return nil
-	case 'e':
-		v.editKey()
-		return nil
-	case 't':
-		v.setTTL()
-		return nil
+// applyFilter filters the keys based on the given pattern
+func (v *KeysView) applyFilter(pattern string) {
+	v.filterText = pattern
+	if pattern == "" {
+		v.filteredKeys = nil
+		v.refreshKeys()
+		return
 	}
 
-	switch event.Key() {
-	case tcell.KeyEscape:
-		if v.filterVisible {
-			v.hideFilter()
-			return nil
+	filtered := make([]*redis.KeyInfo, 0)
+	for _, key := range v.keys {
+		if strings.Contains(strings.ToLower(key.Name), strings.ToLower(pattern)) {
+			filtered = append(filtered, key)
 		}
 	}
-
-	return event
+	v.filteredKeys = filtered
+	v.refreshKeys()
 }
 
-// showFilter shows the filter input
-func (v *KeysView) showFilter() {
-	v.filterVisible = true
-	v.updateLayout()
-}
-
-// hideFilter hides the filter input
-func (v *KeysView) hideFilter() {
-	v.filterVisible = false
-	v.updateLayout()
-}
-
-// filterChanged handles filter text changes
-func (v *KeysView) filterChanged(text string) {
-	v.filterText = text
-	v.applyFilter()
-}
-
-// filterDone handles filter input completion
-func (v *KeysView) filterDone(key tcell.Key) {
-	if key == tcell.KeyEscape {
-		v.hideFilter()
-	}
-}
-
-// deleteKey deletes the selected key
-func (v *KeysView) deleteKey() {
-	if v.selectedKey == "" {
-		return
-	}
-
-	// For now, just delete without confirmation
-	// TODO: Implement confirmation dialog through parent app
-	err := v.redis.DeleteKey(v.selectedKey)
-	if err != nil {
-		v.keyDetail.SetText(fmt.Sprintf("[red]Error deleting key: %s", err))
-	} else {
-		v.loadKeys()
-		v.keyDetail.SetText(fmt.Sprintf("[green]Key '%s' deleted", v.selectedKey))
-		v.selectedKey = ""
-	}
-}
-
-// editKey edits the selected key
-func (v *KeysView) editKey() {
-	if v.selectedKey == "" {
-		return
-	}
-
-	// Get current value
-	currentValue, err := v.redis.GetValue(v.selectedKey)
-	if err != nil {
-		v.keyDetail.SetText(fmt.Sprintf("[red]Error getting value: %s", err))
-		return
-	}
-
-	// This would need to be handled by the parent app with a modal
-	// For now, just show the current value
-	v.keyDetail.SetText(fmt.Sprintf("[yellow]Edit mode not implemented yet\nCurrent value: %s", currentValue))
-}
-
-// setTTL sets TTL for the selected key
-func (v *KeysView) setTTL() {
-	if v.selectedKey == "" {
-		return
-	}
-
-	// This would need to be handled by the parent app with a modal
-	// For now, just show current TTL
-	info, err := v.redis.GetKeyInfo(v.selectedKey)
-	if err != nil {
-		v.keyDetail.SetText(fmt.Sprintf("[red]Error getting key info: %s", err))
-		return
-	}
-
-	v.keyDetail.SetText(fmt.Sprintf("[yellow]TTL edit mode not implemented yet\nCurrent TTL: %s", formatTTL(info.TTL)))
-}
-
-// Refresh refreshes the keys view
+// Refresh reloads the keys from Redis
 func (v *KeysView) Refresh() {
 	v.loadKeys()
-	if v.selectedKey != "" {
-		v.showKeyDetails()
-	}
 }
 
-// formatBytes formats bytes in human readable format
-func formatBytes(bytes int64) string {
-	if bytes == 0 {
-		return "0 B"
-	}
 
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
-
-// formatTTL formats TTL in human readable format
-func formatTTL(ttl time.Duration) string {
-	if ttl == -1 {
-		return "∞ (no expiration)"
-	}
-	if ttl == -2 {
-		return "Key does not exist"
-	}
-	if ttl == 0 {
-		return "Expired"
-	}
-
-	if ttl < time.Minute {
-		return fmt.Sprintf("%ds", int(ttl.Seconds()))
-	}
-	if ttl < time.Hour {
-		return fmt.Sprintf("%dm %ds", int(ttl.Minutes()), int(ttl.Seconds())%60)
-	}
-	if ttl < 24*time.Hour {
-		return fmt.Sprintf("%dh %dm", int(ttl.Hours()), int(ttl.Minutes())%60)
-	}
-
-	days := int(ttl.Hours()) / 24
-	hours := int(ttl.Hours()) % 24
-	return fmt.Sprintf("%dd %dh", days, hours)
-}

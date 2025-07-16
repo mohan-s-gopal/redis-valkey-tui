@@ -38,8 +38,11 @@ type App struct {
 
 	// Current state
 	currentView ViewType
+	headerBar   *tview.Flex
+	contextBar  *tview.TextView
 	statusBar   *tview.TextView
 	commandBar  *tview.TextView
+	metrics     *Metrics
 
 	// Help
 	helpVisible bool
@@ -52,6 +55,7 @@ func NewApp(cfg *config.Config) *App {
 		app:         tview.NewApplication(),
 		pages:       tview.NewPages(),
 		config:      cfg,
+		metrics:     NewMetrics(),
 		currentView: KeysViewType,
 	}
 
@@ -75,6 +79,9 @@ func (a *App) Run() error {
 	a.cliView = NewCLIView(a.redis)
 	a.configView = NewConfigView(a.config)
 
+	// Create header
+	a.headerBar = a.createHeader()
+
 	// Setup main layout
 	a.setupLayout()
 
@@ -82,7 +89,10 @@ func (a *App) Run() error {
 	a.switchView(KeysViewType)
 
 	// Start the application
-	return a.app.Run()
+	if err := a.app.Run(); err != nil {
+		return fmt.Errorf("application error: %w", err)
+	}
+	return nil
 }
 
 // setupUI initializes the UI components
@@ -117,12 +127,13 @@ func (a *App) setupUI() {
 
 // setupLayout creates the main layout
 func (a *App) setupLayout() {
-	// Create main flex container
+	// Create main flex container with k9s-style header
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
+		AddItem(a.headerBar, 2, 0, false).
 		AddItem(a.getCurrentView(), 0, 1, true).
-		AddItem(a.statusBar, 3, 0, false).
-		AddItem(a.commandBar, 3, 0, false)
+		AddItem(a.statusBar, 1, 0, false).
+		AddItem(a.commandBar, 1, 0, false)
 
 	a.pages.AddPage("main", flex, true, true)
 	a.pages.AddPage("help", a.helpModal, true, false)

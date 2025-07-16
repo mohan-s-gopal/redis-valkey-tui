@@ -44,6 +44,30 @@ func (c *Client) Close() error {
 	return c.rdb.Close()
 }
 
+// Type returns the type of a key
+func (c *Client) Type(key string) (string, error) {
+	return c.rdb.Type(c.ctx, key).Result()
+}
+
+// TTL returns the TTL of a key in seconds
+func (c *Client) TTL(key string) (int64, error) {
+	duration, err := c.rdb.TTL(c.ctx, key).Result()
+	if err != nil {
+		return -1, err
+	}
+	return int64(duration.Seconds()), nil
+}
+
+// MemoryUsage returns the memory usage of a key in bytes
+func (c *Client) MemoryUsage(key string) (int64, error) {
+	return c.rdb.MemoryUsage(c.ctx, key).Result()
+}
+
+// ObjectEncoding returns the internal encoding of a key
+func (c *Client) ObjectEncoding(key string) (string, error) {
+	return c.rdb.ObjectEncoding(c.ctx, key).Result()
+}
+
 // GetKeys returns all keys matching the pattern
 func (c *Client) GetKeys(pattern string) ([]string, error) {
 	if pattern == "" {
@@ -61,7 +85,8 @@ func (c *Client) GetKeys(pattern string) ([]string, error) {
 // GetKeyInfo returns information about a key
 func (c *Client) GetKeyInfo(key string) (*KeyInfo, error) {
 	info := &KeyInfo{
-		Key: key,
+		Key:  key,
+		Name: key,
 	}
 
 	// Get key type
@@ -82,6 +107,13 @@ func (c *Client) GetKeyInfo(key string) (*KeyInfo, error) {
 	memUsage, err := c.rdb.MemoryUsage(c.ctx, key).Result()
 	if err == nil {
 		info.MemoryUsage = memUsage
+		info.Size = memUsage // Set Size to match MemoryUsage
+	}
+
+	// Get encoding
+	encoding, err := c.rdb.ObjectEncoding(c.ctx, key).Result()
+	if err == nil {
+		info.Encoding = encoding
 	}
 
 	return info, nil
@@ -180,6 +212,47 @@ func (c *Client) ExecuteCommand(cmd string, args ...interface{}) (interface{}, e
 	return c.rdb.Do(c.ctx, cmdArgs...).Result()
 }
 
+// Info returns Redis INFO command output
+func (c *Client) Info() (map[string]interface{}, error) {
+	info, err := c.rdb.Info(c.ctx).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]interface{})
+	lines := strings.Split(info, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 {
+			key := parts[0]
+			value := strings.TrimSpace(parts[1])
+
+			// Try to convert to integer
+			if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
+				result[key] = intVal
+				continue
+			}
+
+			// Try to convert to float
+			if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+				result[key] = floatVal
+				continue
+			}
+
+			// Keep as string
+			result[key] = value
+		}
+	}
+
+	return result, nil
+}
+
 // GetMetrics returns Redis metrics
 func (c *Client) GetMetrics() (*Metrics, error) {
 	info, err := c.GetInfo()
@@ -193,10 +266,14 @@ func (c *Client) GetMetrics() (*Metrics, error) {
 		metrics.ConnectedClients, _ = strconv.ParseInt(val, 10, 64)
 	}
 	if val, ok := info["used_memory"]; ok {
-		metrics.UsedMemory, _ = strconv.ParseInt(val, 10, 64)
+		if parsed, err := strconv.ParseUint(val, 10, 64); err == nil {
+			metrics.UsedMemory = parsed
+		}
 	}
 	if val, ok := info["used_memory_rss"]; ok {
-		metrics.UsedMemoryRss, _ = strconv.ParseInt(val, 10, 64)
+		if parsed, err := strconv.ParseUint(val, 10, 64); err == nil {
+			metrics.UsedMemoryRss = parsed
+		}
 	}
 	if val, ok := info["total_commands_processed"]; ok {
 		metrics.TotalCommandsProcessed, _ = strconv.ParseInt(val, 10, 64)
@@ -220,19 +297,22 @@ func (c *Client) GetMetrics() (*Metrics, error) {
 // KeyInfo holds information about a Redis key
 type KeyInfo struct {
 	Key         string
+	Name        string
 	Type        string
 	TTL         time.Duration
+	Size        int64
+	Encoding    string
 	MemoryUsage int64
 }
 
 // Metrics holds Redis server metrics
 type Metrics struct {
 	ConnectedClients       int64
-	UsedMemory             int64
-	UsedMemoryRss          int64
+	UsedMemory            uint64
+	UsedMemoryRss         uint64
 	TotalCommandsProcessed int64
-	KeyspaceHits           int64
-	KeyspaceMisses         int64
+	KeyspaceHits          int64
+	KeyspaceMisses        int64
 	InstantaneousOpsPerSec int64
-	UptimeInSeconds        int64
+	UptimeInSeconds       int64
 }
