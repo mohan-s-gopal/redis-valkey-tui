@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 	"redis-cli-dashboard/internal/redis"
+	"redis-cli-dashboard/internal/utils"
+	"redis-cli-dashboard/internal/logger"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -22,6 +24,7 @@ type MonitorView struct {
 
 // NewMonitorView creates a new monitor view
 func NewMonitorView(redisClient *redis.Client) *MonitorView {
+	logger.Logger.Println("Initializing MonitorView...")
 	view := &MonitorView{
 		redis:    redisClient,
 		stopChan: make(chan bool),
@@ -29,6 +32,7 @@ func NewMonitorView(redisClient *redis.Client) *MonitorView {
 
 	view.setupUI()
 	view.loadMetrics()
+	logger.Logger.Println("MonitorView initialized")
 
 	return view
 }
@@ -170,7 +174,7 @@ func (v *MonitorView) loadMetrics() {
 		metrics.KeyspaceHits,
 		metrics.KeyspaceMisses,
 		hitRate,
-		formatUptime(metrics.UptimeInSeconds),
+		utils.FormatUptime(metrics.UptimeInSeconds),
 	)
 
 	// Append to existing text
@@ -194,8 +198,8 @@ func (v *MonitorView) Refresh() {
 	v.loadMetrics()
 }
 
-// formatUptime formats uptime in seconds to human readable format
-func formatUptime(seconds int64) string {
+// getFormattedUptime formats uptime in seconds to human readable format
+func getFormattedUptime(seconds int64) string {
 	if seconds < 60 {
 		return fmt.Sprintf("%ds", seconds)
 	}

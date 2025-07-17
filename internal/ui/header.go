@@ -4,54 +4,119 @@ import (
 	"fmt"
 	"time"
 
+	"redis-cli-dashboard/internal/utils"
+	"redis-cli-dashboard/internal/logger"
+
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 )
 
 
-// createHeader creates the k9s-like header bar
+// createHeader creates the Redis-style header bar
 func (a *App) createHeader() *tview.Flex {
-	header := tview.NewFlex().SetDirection(tview.FlexRow)
-
-	// Create a box for the header
-	headerBox := tview.NewFlex().
-		SetDirection(tview.FlexRow)
-	headerBox.SetBorder(true).
-		SetTitle("Redis Dashboard")
-
-	// Top status line with Redis info and metrics
-	statusLine := tview.NewTextView().
+	header := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft)
 
-	// Context line with current view info and actions
-	contextLine := tview.NewTextView().
-		SetDynamicColors(true).
-		SetTextAlign(tview.AlignLeft)
+	// Set the initial header content
+	header.SetBorder(true)
+	a.updateHeaderContent(header)
 
-	a.updateHeaderStatus(statusLine)
-	a.updateContextLine(contextLine)
-
-	// Add status and context lines to header box
-	headerBox.AddItem(statusLine, 1, 0, false).
-		AddItem(contextLine, 1, 0, false)
-
-	// Add header box to main header flex
-	header.AddItem(headerBox, 3, 0, false)
+	// Create a flex container for the header
+	headerFlex := tview.NewFlex().
+		AddItem(header, 0, 1, false)
 
 	// Update metrics periodically
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		for range ticker.C {
-			a.updateMetrics()
-			a.app.QueueUpdateDraw(func() {
-				a.updateHeaderStatus(statusLine)
-				a.updateContextLine(contextLine)
-			})
-		}
-	}()
+	// stopChan := make(chan struct{})
+	// updateChan := make(chan struct{}, 1) // Buffer of 1 to prevent blocking
 
-	return header
+	// Start the metrics collection routine
+	// go func() {
+	// 	ticker := time.NewTicker(time.Second)
+	// 	defer ticker.Stop()
+	// 	logger.Logger.Println("Metrics update routine started")
+
+	// 	metricsUpdateChan := make(chan struct{}, 1) // Channel for metrics updates
+	// 	go func() {
+	// 		for range metricsUpdateChan {
+	// 			a.updateMetrics()
+	// 			select {
+	// 			case updateChan <- struct{}{}:
+	// 			default:
+	// 			}
+	// 		}
+	// 	}()
+
+	// 	for {
+	// 		select {
+	// 		case <-ticker.C:
+	// 			// Non-blocking send to metrics update channel
+	// 			select {
+	// 			case metricsUpdateChan <- struct{}{}:
+	// 			default:
+	// 				// Skip this update if previous one is still processing
+	// 				logger.Logger.Println("Skipping metrics update - previous update still in progress")
+	// 			}
+	// 		case <-stopChan:
+	// 			close(metricsUpdateChan)
+	// 			logger.Logger.Println("Metrics update routine stopped")
+	// 			return
+	// 		}
+	// 	}
+	// }()
+
+	// Start the UI update routine
+	// go func() {
+	// 	logger.Logger.Println("UI update routine started")
+	// 	for {
+	// 		select {
+	// 		case <-updateChan:
+	// 			header.SetText(a.formatHeaderText())
+	// 		case <-stopChan:
+	// 			logger.Logger.Println("UI update routine stopped")
+	// 			return
+	// 		}
+	// 	}
+	// }()
+
+	// Store stop channel in app for cleanup
+	// a.metricsStopChan = stopChan
+
+	return headerFlex
+}
+
+// formatHeaderText formats the header text based on current metrics
+func (a *App) formatHeaderText() string {
+	info, err := a.redis.Info()
+	if err != nil {
+		return "[red]Disconnected from Redis"
+	}
+
+	// Get key count
+	keyCount := 0
+	if dbSize, ok := info["db0_keys"].(int64); ok {
+		keyCount = int(dbSize)
+	}
+
+	// Parse metrics from info
+	usedMemory, _ := info["used_memory"].(int64)
+	connectedClients, _ := info["connected_clients"].(int64)
+	uptimeSeconds, _ := info["uptime_in_seconds"].(int64)
+	
+	memory := humanize.Bytes(uint64(usedMemory))
+	uptime := utils.FormatUptime(uptimeSeconds)
+
+	return fmt.Sprintf(" redis-cli-dashboard │ DB: db%d │ Keys: %d │ Memory: %s │ Clients: %d │ Uptime: %s ",
+		a.config.Redis.DB,
+		keyCount,
+		memory,
+		connectedClients,
+		uptime)
+}
+
+// updateHeaderContent updates the header content with Redis metrics
+func (a *App) updateHeaderContent(header *tview.TextView) {
+	header.SetText(a.formatHeaderText())
 }
 
 // updateHeaderStatus updates the header status line with current metrics
@@ -95,8 +160,26 @@ func (a *App) updateContextLine(context *tview.TextView) {
 
 // updateMetrics fetches the latest metrics from Redis
 func (a *App) updateMetrics() {
-	info, err := a.redis.Info()
-	if err != nil {
+	// Create a channel to handle timeout
+	done := make(chan bool, 1)
+	var info map[string]interface{}
+	var err error
+
+	// Run Redis INFO command with timeout
+	go func() {
+		info, err = a.redis.Info()
+		done <- true
+	}()
+
+	// Wait for Redis operation with timeout
+	select {
+	case <-done:
+		if err != nil {
+			logger.Logger.Printf("Error fetching Redis info: %v", err)
+			return
+		}
+	case <-time.After(500 * time.Millisecond):
+		logger.Logger.Println("Timeout while fetching Redis metrics")
 		return
 	}
 

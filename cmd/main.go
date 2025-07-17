@@ -4,13 +4,23 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"redis-cli-dashboard/internal/config"
+	"redis-cli-dashboard/internal/logger"
 	"redis-cli-dashboard/internal/ui"
 )
 
 // Main is the main entry point
 func Main() {
+	// Initialize logger
+	if err := logger.Init(); err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer logger.Close()
+	
+	logger.Logger.Println("Starting redis-cli-dashboard...")
 	var (
 		host     = flag.String("host", "", "Redis host")
 		port     = flag.Int("port", 0, "Redis port")
