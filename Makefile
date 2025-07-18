@@ -17,6 +17,8 @@ clean:
 # Run tests
 test:
 	go test ./...
+	go test ./internal/ui
+	go test ./internal/ui/ -v -run TestInputHandling
 
 # Install dependencies
 deps:

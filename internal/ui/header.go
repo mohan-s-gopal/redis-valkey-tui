@@ -16,71 +16,41 @@ import (
 func (a *App) createHeader() *tview.Flex {
 	header := tview.NewTextView().
 		SetDynamicColors(true).
-		SetTextAlign(tview.AlignLeft)
+		SetTextAlign(tview.AlignLeft).
+		SetWrap(false)
 
 	// Set the initial header content
 	header.SetBorder(true)
+	header.SetBorderPadding(0, 0, 1, 1)
 	a.updateHeaderContent(header)
 
 	// Create a flex container for the header
 	headerFlex := tview.NewFlex().
 		AddItem(header, 0, 1, false)
 
-	// Update metrics periodically
-	// stopChan := make(chan struct{})
-	// updateChan := make(chan struct{}, 1) // Buffer of 1 to prevent blocking
+	// Update header content periodically
+	stopChan := make(chan struct{})
 
 	// Start the metrics collection routine
-	// go func() {
-	// 	ticker := time.NewTicker(time.Second)
-	// 	defer ticker.Stop()
-	// 	logger.Logger.Println("Metrics update routine started")
+	go func() {
+		ticker := time.NewTicker(2 * time.Second) // Update every 2 seconds
+		defer ticker.Stop()
 
-	// 	metricsUpdateChan := make(chan struct{}, 1) // Channel for metrics updates
-	// 	go func() {
-	// 		for range metricsUpdateChan {
-	// 			a.updateMetrics()
-	// 			select {
-	// 			case updateChan <- struct{}{}:
-	// 			default:
-	// 			}
-	// 		}
-	// 	}()
-
-	// 	for {
-	// 		select {
-	// 		case <-ticker.C:
-	// 			// Non-blocking send to metrics update channel
-	// 			select {
-	// 			case metricsUpdateChan <- struct{}{}:
-	// 			default:
-	// 				// Skip this update if previous one is still processing
-	// 				logger.Logger.Println("Skipping metrics update - previous update still in progress")
-	// 			}
-	// 		case <-stopChan:
-	// 			close(metricsUpdateChan)
-	// 			logger.Logger.Println("Metrics update routine stopped")
-	// 			return
-	// 		}
-	// 	}
-	// }()
-
-	// Start the UI update routine
-	// go func() {
-	// 	logger.Logger.Println("UI update routine started")
-	// 	for {
-	// 		select {
-	// 		case <-updateChan:
-	// 			header.SetText(a.formatHeaderText())
-	// 		case <-stopChan:
-	// 			logger.Logger.Println("UI update routine stopped")
-	// 			return
-	// 		}
-	// 	}
-	// }()
+		for {
+			select {
+			case <-ticker.C:
+				// Update header text directly (avoid QueueUpdateDraw hanging issues)
+				if a.app != nil && header != nil {
+					a.updateHeaderContent(header)
+				}
+			case <-stopChan:
+				return
+			}
+		}
+	}()
 
 	// Store stop channel in app for cleanup
-	// a.metricsStopChan = stopChan
+	a.metricsStopChan = stopChan
 
 	return headerFlex
 }
@@ -92,7 +62,7 @@ func (a *App) formatHeaderText() string {
 		return "[red]Disconnected from Redis"
 	}
 
-	// Get key count
+	// Get key count from dbsize command
 	keyCount := 0
 	if dbSize, ok := info["db0_keys"].(int64); ok {
 		keyCount = int(dbSize)
@@ -106,7 +76,7 @@ func (a *App) formatHeaderText() string {
 	memory := humanize.Bytes(uint64(usedMemory))
 	uptime := utils.FormatUptime(uptimeSeconds)
 
-	return fmt.Sprintf(" redis-cli-dashboard │ DB: db%d │ Keys: %d │ Memory: %s │ Clients: %d │ Uptime: %s ",
+	return fmt.Sprintf(" redis-tview │ DB: db%d │ Keys: %d │ Memory: %s │ Clients: %d │ Uptime: %s │ [dim]1-6: Views │ ?: Help[white] ",
 		a.config.Redis.DB,
 		keyCount,
 		memory,

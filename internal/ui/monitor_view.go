@@ -59,17 +59,18 @@ func (v *MonitorView) GetComponent() tview.Primitive {
 // handleInput handles input for the monitor view
 func (v *MonitorView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Rune() {
-	case 's':
+	case 's', 'S':
 		v.toggleMonitoring()
 		return nil
-	case 'c':
+	case 'c', 'C':
 		v.clearScreen()
 		return nil
-	case 'r':
+	case 'r', 'R':
 		v.Refresh()
 		return nil
 	}
 
+	// Let all other keys pass through to global handler (including 1-6, ?, etc.)
 	return event
 }
 

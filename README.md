@@ -1,257 +1,262 @@
-# redis-cli-dashboard - A k9s-inspired TUI Redis/Valkey Client
+# redis-cli-dashboard
 
-[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built with Go. Provides an intuitive, keyboard-driven interface for Redis database management with real-time monitoring, advanced key management, and built-in CLI functionality.
 
-A powerful Terminal User Interface (TUI) client for Redis and Valkey, inspired by k9s navigation patterns and RedisInsight features.
+![Redis CLI Dashboard](docs/screenshot.png)
 
 ## 🌟 Features
 
-### 🎯 Multi-View Navigation
-- **Keys View**: Browse, filter, and manage Redis keys with real-time search
-- **Info View**: Display comprehensive server information and metrics
-- **Monitor View**: Real-time performance monitoring and metrics
-- **CLI View**: Built-in Redis command line interface with history
-- **Config View**: Configuration management and settings
+### 🎯 **Multi-View Navigation**
+- **6 Specialized Views**: Keys, Info, Monitor, CLI, Config, and Help
+- **Instant View Switching**: Number keys (1-6) for immediate navigation
+- **Home Navigation**: ESC key returns to main screen (Keys view)
+- **Clean Interface**: No blocking or hanging during view transitions
 
-### 🔧 Advanced Capabilities
-- **k9s-inspired Navigation**: Intuitive command-driven interface
-- **Real-time Filtering**: Pattern-based key filtering and search
-- **TTL Management**: View and modify key expiration times
-- **Memory Analytics**: Track memory usage per key and overall
-- **JSON Formatting**: Automatic JSON detection and pretty printing
-- **Command History**: Navigate through previously executed commands
-- **Multi-database Support**: Switch between Redis databases
+### 🔧 **Advanced Key Management**
+- **Real-time Key Browser**: Browse Redis keys with type indicators and metadata
+- **Smart Filtering**: Live search and pattern matching with `/` key
+- **Key Operations**: View, edit, delete keys with TTL management
+- **Type Support**: Strings, Lists, Sets, Hashes, Sorted Sets with proper formatting
+- **Memory Usage**: Display key sizes and memory consumption
 
-### 🎨 User Experience
-- **Responsive TUI**: Built with tview for a smooth terminal experience
-- **Keyboard Shortcuts**: Efficient navigation with keyboard shortcuts
-- **Status Indicators**: Real-time status updates and feedback
-- **Help System**: Built-in help with command reference
-- **Error Handling**: Graceful error handling with user feedback
+### 📊 **Real-time Monitoring**
+- **Live Metrics**: Server info, memory usage, connected clients
+- **Performance Tracking**: Operations per second, command statistics
+- **Connection Status**: Real-time connection health monitoring
+- **Header Display**: Always-visible server status and database info
 
-## 📁 Project Structure
+### 💻 **Integrated CLI**
+- **Full Redis CLI**: Execute any Redis command directly in the interface
+- **Command History**: Navigate previous commands with arrow keys
+- **Syntax Support**: Proper command formatting and response display
+- **Quick Access**: Switch between GUI and CLI modes instantly
 
-```
-redis-cli-dashboard/
-├── cmd/                    # Application entry point
-│   └── main.go            # Main command package
-├── internal/              # Private application code
-│   ├── config/           # Configuration management
-│   │   └── config.go     # Config types and functions
-│   ├── redis/            # Redis client wrapper
-│   │   └── client.go     # Redis operations and metrics
-│   ├── ui/               # User interface components
-│   │   ├── app.go        # Main application logic
-│   │   ├── keys_view.go  # Keys browser view
-│   │   ├── info_view.go  # Server info view
-│   │   ├── monitor_view.go # Monitoring view
-│   │   ├── cli_view.go   # CLI interface view
-│   │   └── config_view.go # Configuration view
-│   └── views/            # Additional view components
-├── pkg/                  # Public packages (if any)
-│   └── utils/           # Utility functions
-├── docs/                 # Documentation
-│   ├── README.md        # Main documentation
-│   ├── USAGE.md         # Usage guide
-│   ├── Features.md      # Feature documentation
-│   └── *.md            # Other documentation files
-├── scripts/             # Build and setup scripts
-│   ├── setup.sh        # Development setup
-│   └── demo.sh         # Feature demonstration
-├── .github/             # GitHub workflows
-│   └── workflows/
-│       └── ci.yml      # CI/CD pipeline
-├── main.go             # Application entry point
-├── go.mod              # Go module definition
-├── go.sum              # Go module checksums
-├── Makefile           # Build automation
-├── Dockerfile         # Container definition
-└── LICENSE            # MIT license
-```
+### ⚙️ **Configuration Management**
+- **Live Config View**: Display current Redis and application settings
+- **Connection Management**: Host, port, database, authentication settings
+- **UI Preferences**: Theme, refresh intervals, display options
+- **Save/Reset**: Configuration persistence and defaults
+
+### 🎨 **User Experience**
+- **Responsive TUI**: Built with tview for smooth terminal experience
+- **Keyboard Shortcuts**: Efficient navigation with intuitive key bindings
+- **Status Indicators**: Real-time feedback and operation status
+- **Help System**: Built-in help with comprehensive command reference
+- **Error Handling**: Graceful error handling with user-friendly messages
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Go 1.21 or later
-- Redis or Valkey server
-
 ### Installation
 
-#### Option 1: Quick Setup
 ```bash
-# Clone the repository
-git clone https://github.com/username/redis-cli-dashboard.git
+git clone https://github.com/mohan-s-gopal/redis-cli-dashboard.git
 cd redis-cli-dashboard
-
-# Run setup script
-./scripts/setup.sh
+go build -o redis-cli-dashboard ./cmd
 ```
 
-#### Option 2: Manual Build
-```bash
-# Install dependencies
-go mod download
-
-# Build the application
-make build
-
-# Run the application
-./build/redis-cli-dashboard
-```
-
-#### Option 3: Using Docker
-```bash
-# Build Docker image
-docker build -t redis-cli-dashboard .
-
-# Run with Docker
-docker run -it --network host redis-cli-dashboard
-```
-
-### Basic Usage
+### Running
 
 ```bash
-# Connect to local Redis (default: localhost:6379)
-redis-cli-dashboard
+# Start with default settings (localhost:6379)
+./redis-cli-dashboard
 
-# Connect to remote server
-redis-cli-dashboard -host redis.example.com -port 6380
+# Connect to specific Redis instance
+./redis-cli-dashboard -host redis.example.com -port 6380 -db 1
 
-# Connect with authentication
-redis-cli-dashboard -password mypassword -db 1
-
-# Show help
-redis-cli-dashboard -help
+# Enable debug logging
+./redis-cli-dashboard -v 2
 ```
 
-## 🎮 Navigation
+### Configuration
 
-### Command Mode
-Press `:` to enter command mode, then type:
-- `:keys` - Switch to Keys view
-- `:info` - Switch to Info view  
-- `:monitor` - Switch to Monitor view
-- `:cli` - Switch to CLI view
-- `:config` - Switch to Config view
-- `:quit` or `:q` - Quit application
+Create `~/.redis-cli-dashboard/config.yaml`:
 
-### Global Key Bindings
-- `Ctrl+C` - Quit application
-- `Ctrl+R` - Refresh current view
-- `?` - Show help
-- `ESC` - Back/Cancel
+```yaml
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  timeout: 5000
+  pool_size: 10
 
-### View-Specific Controls
-
-#### Keys View
-- `d` - Delete selected key
-- `e` - Edit selected key
-- `t` - Set TTL for selected key
-- `/` - Filter keys
-- `r` - Refresh keys
-- `Enter` - View key details
-
-#### Monitor View
-- `s` - Start/stop monitoring
-- `c` - Clear screen
-- `r` - Refresh metrics
-
-#### CLI View
-- `Enter` - Execute command
-- `↑/↓` - Navigate command history
-- `Ctrl+L` - Clear screen
-
-## ⚙️ Configuration
-
-### Configuration File
-redis-cli-dashboard looks for configuration at `~/.redis-cli-dashboard/config.json`:
-
-```json
-{
-  "redis": {
-    "host": "localhost",
-    "port": 6379,
-    "password": "",
-    "db": 0,
-    "timeout": 5000,
-    "pool_size": 10
-  },
-  "ui": {
-    "theme": "default",
-    "refresh_interval": 1000,
-    "max_keys": 1000,
-    "show_memory": true,
-    "show_ttl": true
-  }
-}
+ui:
+  theme: "default"
+  refresh_interval: 1000
+  max_keys: 1000
+  show_memory: true
+  show_ttl: true
 ```
 
-### Command Line Options
-Command line options override configuration file values:
+## 🎮 Navigation & Controls
 
-```bash
-redis-cli-dashboard -host localhost -port 6379 -password secret -db 1
+### Global Navigation
+| Key | Action |
+|-----|--------|
+| `1` | Switch to Keys view (main screen) |
+| `2` | Switch to Info view |
+| `3` | Switch to Monitor view |
+| `4` | Switch to CLI view |
+| `5` | Switch to Config view |
+| `6` | Switch to Help view |
+| `ESC` | Return to main screen (Keys view) |
+| `?` | Show help modal |
+| `Ctrl+C` | Quit application |
+| `Ctrl+R` | Refresh current view |
+
+### Keys View
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Navigate keys |
+| `Enter` | View key details |
+| `/` | Focus filter input |
+| `c` | Focus command input |
+| `r` | Refresh key list |
+| `d` | Delete selected key |
+| `e` | Edit selected key |
+| `t` | Set/modify TTL |
+
+### CLI View
+| Key | Action |
+|-----|--------|
+| `Enter` | Execute command |
+| `↑/↓` | Navigate command history |
+| `Ctrl+L` | Clear screen |
+| `Tab` | Command completion (if available) |
+
+### Monitor View
+| Key | Action |
+|-----|--------|
+| `s` | Start/stop monitoring |
+| `c` | Clear screen |
+| `r` | Refresh metrics |
+
+## 🏗️ Architecture
+
+### Project Structure
 ```
+redis-cli-dashboard/
+├── cmd/                    # Application entry point
+├── internal/
+│   ├── config/            # Configuration management
+│   ├── logger/            # Logging system
+│   ├── redis/             # Redis client wrapper
+│   ├── ui/                # TUI components
+│   │   ├── app.go         # Main application
+│   │   ├── keys_view.go   # Key browser
+│   │   ├── cli_view.go    # CLI interface
+│   │   ├── monitor_view.go # Monitoring
+│   │   └── ...            # Other views
+│   └── utils/             # Utility functions
+├── docs/                  # Documentation
+└── README.md
+```
+
+### Key Components
+- **TUI Framework**: [tview](https://github.com/rivo/tview) for terminal interface
+- **Redis Client**: [go-redis](https://github.com/redis/go-redis) for Redis connectivity
+- **Configuration**: YAML-based configuration with defaults
+- **Logging**: Structured logging with configurable verbosity
+- **Testing**: Comprehensive test coverage for core functionality
 
 ## 🔧 Development
 
-### Building
+### Prerequisites
+- Go 1.19 or later
+- Redis/Valkey server for testing
+- Terminal with color support
 
+### Building from Source
 ```bash
-# Development build
-make dev
-
-# Production build
-make build
-
-# Build for all platforms
-make build-all
-
-# Run tests
-make test
-
-# Format code
-make fmt
-
-# Lint code
-make lint
+git clone https://github.com/mohan-s-gopal/redis-cli-dashboard.git
+cd redis-cli-dashboard
+go mod tidy
+go build -o redis-cli-dashboard ./cmd
 ```
 
-### Project Layout
+### Running Tests
+```bash
+# Run all tests
+go test ./...
 
-This project follows the [Standard Go Project Layout](https://github.com/golang-standards/project-layout):
+# Run with coverage
+go test -v -cover ./...
 
-- `cmd/` - Main applications for this project
-- `internal/` - Private application and library code
-- `pkg/` - Library code that's safe to use by external applications
-- `docs/` - Documentation files
-- `scripts/` - Scripts for building, installation, analysis, etc.
+# Run specific test
+go test -v ./internal/redis
+```
 
-### Architecture
+### Development Workflow
+1. Make changes to source code
+2. Run tests to ensure functionality
+3. Build and test the application
+4. Submit pull request with description
+
+## 📋 Command Line Options
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   cmd/main.go   │    │  internal/ui/   │    │ internal/redis/ │
-│                 │───▶│     app.go      │───▶│   client.go     │
-│   Entry Point   │    │  View Manager   │    │ Redis Operations│
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │ internal/config/│
-                    │   config.go     │
-                    │  Configuration  │
-                    └─────────────────┘
+Usage: redis-cli-dashboard [OPTIONS]
+
+Connection Options:
+  -host string        Redis host (default "localhost")
+  -port int          Redis port (default 6379)
+  -password string   Redis password
+  -db int           Redis database number (default 0)
+
+Application Options:
+  -config string     Config file path (default "~/.redis-cli-dashboard/config.yaml")
+  -v int            Verbosity level 0-4 (default 0)
+  -version          Show version information
+
+Examples:
+  redis-cli-dashboard                                    # Connect to localhost:6379
+  redis-cli-dashboard -host prod.redis.com -port 6380   # Connect to remote Redis
+  redis-cli-dashboard -db 2 -v 2                        # Use database 2 with debug logging
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Connection Failed**
+```bash
+# Check Redis server status
+redis-cli ping
+
+# Test with specific host/port
+redis-cli -h your-host -p your-port ping
+```
+
+**UI Not Displaying Correctly**
+- Ensure terminal supports color and has sufficient size (minimum 80x24)
+- Try different terminal emulators if issues persist
+- Check terminal environment variables (`TERM`, `COLORTERM`)
+
+**High Memory Usage**
+- Reduce `max_keys` in configuration
+- Lower `refresh_interval` to reduce update frequency
+- Use filtering to limit displayed keys
+
+### Debug Mode
+```bash
+# Enable detailed logging
+./redis-cli-dashboard -v 4
+
+# Check logs
+tail -f ~/.redis-cli-dashboard/logs/app.log
 ```
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Areas for Contribution
+- Additional Redis data type support
+- Performance optimizations
+- UI/UX improvements
+- Documentation and examples
+- Test coverage expansion
+- Bug fixes and stability improvements
 
 ## 📄 License
 
@@ -259,12 +264,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by [k9s](https://github.com/derailed/k9s) for navigation patterns
-- Inspired by [RedisInsight](https://github.com/RedisInsight/RedisInsight) for features
-- Built with [tview](https://github.com/rivo/tview) for the TUI framework
+- Inspired by [k9s](https://github.com/derailed/k9s) for Kubernetes
+- Built with [tview](https://github.com/rivo/tview) TUI framework
 - Uses [go-redis](https://github.com/redis/go-redis) for Redis connectivity
+- Community feedback and contributions
+
+## 🔗 Links
+
+- **Repository**: https://github.com/mohan-s-gopal/redis-cli-dashboard
+- **Issues**: https://github.com/mohan-s-gopal/redis-cli-dashboard/issues
+- **Documentation**: [docs/](docs/)
+- **Releases**: https://github.com/mohan-s-gopal/redis-cli-dashboard/releases
 
 ---
 
-# Testing
-go test -v ./internal/ui
+**Made with ❤️ for the Redis community**

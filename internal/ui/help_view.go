@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -26,6 +27,12 @@ func (v *HelpView) setupUI() {
 
 	v.text.SetBorder(true).
 		SetTitle("Help")
+	
+	// Set up input capture to pass through global navigation keys
+	v.text.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Let all keys pass through to global handler
+		return event
+	})
 
 	helpText := `[yellow]Navigation[white]
   [yellow]↑/↓[white]............Navigate keys

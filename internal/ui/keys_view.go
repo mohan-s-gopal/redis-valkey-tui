@@ -6,6 +6,7 @@ import (
 
 	"redis-cli-dashboard/internal/config"
 	"redis-cli-dashboard/internal/redis"
+	"redis-cli-dashboard/internal/logger"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
@@ -18,16 +19,22 @@ type KeysView struct {
 	config *config.Config
 
 	// Components
-	flex      *tview.Flex
-	table     *tview.Table
-	keyDetail *tview.TextView
-	filter    *tview.InputField
+	flex         *tview.Flex
+	table        *tview.Table
+	keyDetail    *tview.TextView
+	filter       *tview.InputField
+	commandInput *tview.InputField
+	commandOutput *tview.TextView
 
 	// State
 	keys         []*redis.KeyInfo
 	filteredKeys []*redis.KeyInfo
 	selectedKey  string
 	filterText   string
+	focusIndex   int // 0=table, 1=filter, 2=command
+
+	// Callbacks
+	onFocusChange func(component tview.Primitive)
 
 	// Layout
 	filterVisible bool
@@ -35,13 +42,23 @@ type KeysView struct {
 
 // NewKeysView creates a new keys view
 func NewKeysView(redisClient *redis.Client, cfg *config.Config) *KeysView {
+	logger.Logger.Println("[KeysView] Initializing NewKeysView...")
 	view := &KeysView{
-		redis:  redisClient,
-		config: cfg,
+		redis:      redisClient,
+		config:     cfg,
+		focusIndex: 0, // Start with table focused
 	}
 
 	view.setupUI()
-	view.loadKeys()
+	logger.Logger.Println("[KeysView] Scheduling async loadKeys()...")
+	// Show loading message
+	view.table.Clear()
+	view.table.SetCell(0, 0, tview.NewTableCell("Loading keys...").SetTextColor(tcell.ColorYellow))
+	// Load keys asynchronously
+	go func() {
+		view.loadKeys()
+	}()
+	logger.Logger.Println("[KeysView] Async loadKeys() scheduled.")
 
 	return view
 }	// setupUI initializes the UI components
@@ -64,12 +81,8 @@ func (v *KeysView) setupUI() {
 
 	// Handle selection changes (navigation with arrow keys)
 	v.table.SetSelectionChangedFunc(func(row, col int) {
-		if row > 0 && row <= len(v.filteredKeys) {
-			displayKeys := v.filteredKeys
-			if len(displayKeys) == 0 {
-				displayKeys = v.keys
-			}
-			keyInfo := displayKeys[row-1]
+		if row > 0 && row <= len(v.getDisplayKeys()) {
+			keyInfo := v.getDisplayKeys()[row-1]
 			if keyInfo != nil {
 				v.selectedKey = keyInfo.Name
 				v.showKeyDetails(keyInfo.Name)
@@ -79,12 +92,8 @@ func (v *KeysView) setupUI() {
 
 	// Handle enter key on selection
 	v.table.SetSelectedFunc(func(row, col int) {
-		if row > 0 && row <= len(v.filteredKeys) {
-			displayKeys := v.filteredKeys
-			if len(displayKeys) == 0 {
-				displayKeys = v.keys
-			}
-			keyInfo := displayKeys[row-1]
+		if row > 0 && row <= len(v.getDisplayKeys()) {
+			keyInfo := v.getDisplayKeys()[row-1]
 			if keyInfo != nil {
 				v.selectedKey = keyInfo.Name
 				v.showKeyDetails(keyInfo.Name)
@@ -102,14 +111,95 @@ func (v *KeysView) setupUI() {
 	// Filter input
 	v.filter = tview.NewInputField().
 		SetLabel("Filter: ").
-		SetFieldWidth(30).
+		SetFieldWidth(0).
+		SetChangedFunc(func(text string) {
+			// Apply filter as user types
+			v.applyFilter(text)
+		}).
 		SetDoneFunc(func(key tcell.Key) {
-			v.applyFilter(v.filter.GetText())
+			if key == tcell.KeyEscape {
+				v.setFocus(0) // Return to table on escape
+			} else {
+				v.applyFilter(v.filter.GetText())
+			}
 		})
+
+	// Command input
+	v.commandInput = tview.NewInputField().
+		SetLabel("Command: ").
+		SetFieldWidth(0).
+		SetDoneFunc(func(key tcell.Key) {
+			if key == tcell.KeyEnter {
+				v.executeCommand(v.commandInput.GetText())
+				v.setFocus(0) // Return to table after command
+			} else if key == tcell.KeyEscape {
+				v.commandInput.SetText("")
+				v.setFocus(0) // Return to table on escape
+			}
+		})
+	
+	// Command output
+	v.commandOutput = tview.NewTextView().
+		SetDynamicColors(true).
+		SetWrap(true).
+		SetScrollable(true)
+	v.commandOutput.SetText("Enter a Redis command above...")
 
 	// Main layout
 	v.flex = tview.NewFlex().
 		SetDirection(tview.FlexRow)
+
+	// Set up view-specific key handling
+	v.flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		logger.Tracef("[KeysView] Input capture received: Key=%v, Rune=%c, FocusIndex=%d", 
+			event.Key(), event.Rune(), v.focusIndex)
+		
+		// Handle view-specific keys only when table has focus (focusIndex == 0)
+		if v.focusIndex == 0 {
+			logger.Tracef("[KeysView] Handling view-specific keys (table has focus)")
+			switch event.Key() {
+			case tcell.KeyRune:
+				switch event.Rune() {
+				case 'c', 'C':
+					logger.Debug("[KeysView] 'c' key pressed, focusing command input")
+					// Focus on command input
+					v.setFocus(2)
+					return nil
+				case '/':
+					logger.Debug("[KeysView] '/' key pressed, focusing filter")
+					// Focus on filter (like vim search)
+					v.setFocus(1)
+					return nil
+				case 'r', 'R':
+					logger.Debug("[KeysView] 'r' key pressed, reloading keys")
+					// Reload/refresh keys
+					go v.loadKeys()
+					return nil
+				// Let all other runes pass through to global handler (numbers, ?, etc.)
+				default:
+					logger.Tracef("[KeysView] Rune '%c' passed through to global handler", event.Rune())
+				}
+			case tcell.KeyTab:
+				logger.Debug("[KeysView] Tab key pressed, cycling focus")
+				// Cycle through focusable elements
+				v.cycleFocus()
+				return nil
+			case tcell.KeyEscape:
+				logger.Debug("[KeysView] Escape key pressed, ensuring table focus")
+				// Ensure table has focus
+				v.setFocus(0)
+				return nil
+			default:
+				logger.Tracef("[KeysView] Key %v passed through to global handler", event.Key())
+			}
+		} else {
+			logger.Tracef("[KeysView] Non-table focus (index=%d), passing key through", v.focusIndex)
+		}
+		
+		// Let all other events pass through to global handler
+		logger.Tracef("[KeysView] Event passed to global handler: Key=%v, Rune=%c", event.Key(), event.Rune())
+		return event
+	})
 	
 	v.refreshLayout()
 }
@@ -118,51 +208,41 @@ func (v *KeysView) setupUI() {
 func (v *KeysView) refreshLayout() {
 	v.flex.Clear()
 
-	// Create main horizontal flex for splitting table and details
-	mainFlex := tview.NewFlex().
-		SetDirection(tview.FlexColumn)
+	// Command input area at the top (bigger - 3 lines)
+	v.flex.AddItem(v.commandInput, 3, 0, false)
 
-	// Left side with filter and table
-	leftFlex := tview.NewFlex().
-		SetDirection(tview.FlexRow)
+	// Command output area (bigger for better visibility - 5 lines)
+	commandOutputWrapper := tview.NewFlex().SetDirection(tview.FlexColumn)
+	commandOutputWrapper.AddItem(v.commandOutput, 0, 1, false)
+	v.flex.AddItem(commandOutputWrapper, 5, 0, false)
 
-	// Add filter if visible
-	if v.filterVisible {
-		filterBox := tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(v.filter, 30, 0, true).
-			AddItem(nil, 0, 1, false)
-		leftFlex.AddItem(filterBox, 1, 0, true)
-	}
+	// Main content area - left: keys table, right: value details
+	mainContent := tview.NewFlex().SetDirection(tview.FlexColumn)
 
-	// Create table box with border
-	tableBox := tview.NewBox().
-		SetBorder(true).
-		SetTitle("Redis Keys")
+	// Left side - filter and keys table
+	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
+	
+	// Filter
+	leftSide.AddItem(v.filter, 1, 0, false)
+	
+	// Keys table wrapper with border
+	keysWrapper := tview.NewFlex().SetDirection(tview.FlexRow)
+	keysWrapper.SetBorder(true).SetTitle("Keys")
+	
+	// Keys table (no border to avoid double border)
+	v.table.SetBorder(false).SetTitle("")
+	keysWrapper.AddItem(v.table, 0, 1, true)
+	leftSide.AddItem(keysWrapper, 0, 1, true)
 
-	// Add table with border
-	leftFlex.AddItem(tableBox, 0, 1, true)
+	// Right side - value details
+	v.keyDetail.SetBorder(true).SetTitle("Value")
 
-	// Make sure table fills the box
-	tableBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
-		innerX, innerY, innerWidth, innerHeight := tableBox.GetInnerRect()
-		v.table.SetRect(innerX, innerY, innerWidth, innerHeight)
-		v.table.Draw(screen)
-		return x, y, width, height
-	})
+	// Add left and right sides to main content
+	mainContent.AddItem(leftSide, 0, 1, true)      // Left side gets equal space
+	mainContent.AddItem(v.keyDetail, 0, 1, false)  // Right side gets equal space
 
-	// Right side with key details
-	v.keyDetail.SetBorder(true).
-		SetTitle("Key Details")
-
-	// Set up the split view with good proportions
-	mainFlex.AddItem(leftFlex, 0, 2, true).        // Left side gets 2/3
-		AddItem(v.keyDetail, 0, 1, false)  // Right side gets 1/3
-
-	// Add the split view to the main flex
-	v.flex.AddItem(mainFlex, 0, 1, true)
-
-	// We've already added contentFlex to v.flex in the code above
+	// Add main content to the main flex (no status bar)
+	v.flex.AddItem(mainContent, 0, 1, true)
 }
 
 // GetComponent returns the view's main component
@@ -215,17 +295,13 @@ func (v *KeysView) refreshKeys() {
 	}
 
 	// Add key rows
-	displayKeys := v.filteredKeys
-	if len(displayKeys) == 0 {
-		displayKeys = v.keys
-	}
+	displayKeys := v.getDisplayKeys()
 
 	for i, key := range displayKeys {
 		row := i + 1
 		
-		// Type column with icon
-		typeIcon := v.getTypeIcon(key.Type)
-		v.table.SetCell(row, 0, tview.NewTableCell(typeIcon+" "+key.Type))
+		// Type column without icon
+		v.table.SetCell(row, 0, tview.NewTableCell(key.Type))
 		
 		// Key name
 		v.table.SetCell(row, 1, tview.NewTableCell(key.Name))
@@ -242,6 +318,15 @@ func (v *KeysView) refreshKeys() {
 		
 		// Encoding
 		v.table.SetCell(row, 4, tview.NewTableCell(key.Encoding))
+	}
+
+	// Select first row if we have data
+	if len(displayKeys) > 0 {
+		v.table.Select(1, 0) // Select first data row (row 1, column 0)
+		v.selectedKey = displayKeys[0].Name
+		v.showKeyDetails(displayKeys[0].Name)
+	} else {
+		v.keyDetail.SetText("No keys found")
 	}
 }
 
@@ -330,6 +415,201 @@ func (v *KeysView) applyFilter(pattern string) {
 	}
 	v.filteredKeys = filtered
 	v.refreshKeys()
+}
+
+// executeCommand executes a Redis command and displays the result
+func (v *KeysView) executeCommand(command string) {
+	if command == "" {
+		return
+	}
+
+	// Clear the input
+	v.commandInput.SetText("")
+
+	// Parse command and arguments
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return
+	}
+
+	cmd := parts[0]
+	args := make([]interface{}, len(parts)-1)
+	for i, arg := range parts[1:] {
+		args[i] = arg
+	}
+
+	// Execute the command
+	result, err := v.redis.ExecuteCommand(cmd, args...)
+	if err != nil {
+		v.commandOutput.SetText(fmt.Sprintf("[red]Error:[white] %v", err))
+	} else {
+		// Format the result nicely
+		formattedResult := v.formatCommandResult(result)
+		v.commandOutput.SetText(fmt.Sprintf("[green]Result:[white] %s", formattedResult))
+	}
+
+	// If the command might have changed keys, reload them
+	commandLower := strings.ToLower(strings.TrimSpace(cmd))
+	if v.shouldReloadKeys(commandLower) {
+		go v.loadKeys()
+	}
+}
+
+// formatCommandResult formats the command result for display
+func (v *KeysView) formatCommandResult(result interface{}) string {
+	if result == nil {
+		return "(nil)"
+	}
+
+	switch r := result.(type) {
+	case string:
+		// Check if it looks like JSON
+		if (strings.HasPrefix(r, "{") && strings.HasSuffix(r, "}")) ||
+		   (strings.HasPrefix(r, "[") && strings.HasSuffix(r, "]")) {
+			return r // Return JSON as-is for now
+		}
+		return fmt.Sprintf(`"%s"`, r)
+	case int64:
+		return fmt.Sprintf("%d", r)
+	case float64:
+		return fmt.Sprintf("%.2f", r)
+	case bool:
+		if r {
+			return "true"
+		}
+		return "false"
+	case []interface{}:
+		if len(r) == 0 {
+			return "(empty list or set)"
+		}
+		var parts []string
+		for i, item := range r {
+			if i >= 5 { // Limit to first 5 items
+				parts = append(parts, fmt.Sprintf("... (%d more)", len(r)-5))
+				break
+			}
+			if str, ok := item.(string); ok {
+				parts = append(parts, fmt.Sprintf(`"%s"`, str))
+			} else {
+				parts = append(parts, fmt.Sprintf("%v", item))
+			}
+		}
+		return fmt.Sprintf("[\n  %s\n]", strings.Join(parts, ",\n  "))
+	case map[string]interface{}:
+		if len(r) == 0 {
+			return "(empty hash)"
+		}
+		var parts []string
+		count := 0
+		for k, v := range r {
+			if count >= 5 { // Limit to first 5 pairs
+				parts = append(parts, fmt.Sprintf("  ... (%d more)", len(r)-5))
+				break
+			}
+			if str, ok := v.(string); ok {
+				parts = append(parts, fmt.Sprintf(`  "%s": "%s"`, k, str))
+			} else {
+				parts = append(parts, fmt.Sprintf(`  "%s": %v`, k, v))
+			}
+			count++
+		}
+		return fmt.Sprintf("{\n%s\n}", strings.Join(parts, ",\n"))
+	default:
+		return fmt.Sprintf("%v", result)
+	}
+}
+
+// shouldReloadKeys determines if keys should be reloaded after a command
+func (v *KeysView) shouldReloadKeys(command string) bool {
+	reloadCommands := []string{
+		"set", "del", "rename", "expire", "persist", "flushdb", "flushall",
+		"hset", "hdel", "lpush", "lpop", "rpush", "rpop", "sadd", "srem",
+		"zadd", "zrem", "xadd", "xdel",
+	}
+
+	for _, cmd := range reloadCommands {
+		if strings.HasPrefix(command, cmd) {
+			return true
+		}
+	}
+	return false
+}
+
+// setFocus sets focus to a specific component
+func (v *KeysView) setFocus(index int) {
+	logger.Debugf("[KeysView] Setting focus from index %d to %d", v.focusIndex, index)
+	v.focusIndex = index
+	
+	var focusComponent tview.Primitive
+	var componentName string
+	switch index {
+	case 0:
+		// Focus on table
+		componentName = "table"
+		v.table.SetSelectable(true, false)
+		focusComponent = v.table
+	case 1:
+		// Focus on filter
+		componentName = "filter"
+		v.table.SetSelectable(false, false)
+		focusComponent = v.filter
+	case 2:
+		// Focus on command input
+		componentName = "command input"
+		v.table.SetSelectable(false, false)
+		focusComponent = v.commandInput
+	default:
+		componentName = "table (default)"
+		focusComponent = v.table
+	}
+	
+	logger.Debugf("[KeysView] Focus set to: %s (index %d)", componentName, index)
+	
+	// Call the focus callback if set
+	if v.onFocusChange != nil && focusComponent != nil {
+		logger.Tracef("[KeysView] Calling focus callback for component: %s", componentName)
+		v.onFocusChange(focusComponent)
+	} else {
+		if v.onFocusChange == nil {
+			logger.Trace("[KeysView] No focus callback set")
+		}
+		if focusComponent == nil {
+			logger.Error("[KeysView] Focus component is nil")
+		}
+	}
+}
+
+// SetFocusCallback sets the callback function for focus changes
+func (v *KeysView) SetFocusCallback(callback func(component tview.Primitive)) {
+	v.onFocusChange = callback
+}
+
+// GetCurrentFocus returns the currently focused component
+func (v *KeysView) GetCurrentFocus() tview.Primitive {
+	switch v.focusIndex {
+	case 0:
+		return v.table
+	case 1:
+		return v.filter
+	case 2:
+		return v.commandInput
+	default:
+		return v.table
+	}
+}
+
+// cycleFocus cycles through focusable components
+func (v *KeysView) cycleFocus() {
+	v.focusIndex = (v.focusIndex + 1) % 3
+	v.setFocus(v.focusIndex)
+}
+
+// getDisplayKeys returns the keys to display (filtered or all)
+func (v *KeysView) getDisplayKeys() []*redis.KeyInfo {
+	if len(v.filteredKeys) > 0 {
+		return v.filteredKeys
+	}
+	return v.keys
 }
 
 // Refresh reloads the keys from Redis

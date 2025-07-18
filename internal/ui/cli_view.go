@@ -66,6 +66,13 @@ func (v *CLIView) setupUI() {
 		SetDirection(tview.FlexRow).
 		AddItem(v.output, 0, 1, false).
 		AddItem(v.input, 3, 0, true)
+	
+	// Set up input capture on the main flex to handle global keys
+	v.flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Only handle global keys when input doesn't have focus
+		// If input has focus, let it handle its own keys
+		return event // Pass through all keys to global handler
+	})
 }
 
 // GetComponent returns the main component
@@ -87,6 +94,7 @@ func (v *CLIView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	}
 
+	// Pass through global navigation keys and other keys
 	return event
 }
 
