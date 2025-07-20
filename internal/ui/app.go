@@ -499,7 +499,7 @@ func (a *App) switchView(view ViewType) {
 			
 			// Verify the direct page switch worked
 			directFrontPage, directFrontName := a.contentPages.GetFrontPage()
-			logger.Tracef("[switchView] Direct switch result - front page: %s (%p)", directFrontName, directFrontPage)
+			logger.Tracef("[switchView] Direct switch result - front page: %s (%s)", directFrontName, directFrontPage)
 			
 			// Direct focus
 			logger.Tracef("[switchView] Direct call to app.SetFocus on component: %p", currentView)
@@ -522,7 +522,7 @@ func (a *App) switchView(view ViewType) {
 			logger.Tracef("[switchView]   - Content pages: %p", a.contentPages)
 			if a.contentPages != nil {
 				currentFrontPage, currentFrontName := a.contentPages.GetFrontPage()
-				logger.Tracef("[switchView]   - Current front page: %s (%p)", currentFrontName, currentFrontPage)
+				logger.Tracef("[switchView]   - Current front page: %s (%s)", currentFrontName, currentFrontPage)
 			}
 		} else {
 			logger.Error("[switchView] CRITICAL: Current view is nil, cannot switch focus")
