@@ -27,7 +27,7 @@ func (v *HelpView) setupUI() {
 
 	v.text.SetBorder(true).
 		SetTitle("Help")
-	
+
 	// Set up input capture to pass through global navigation keys
 	v.text.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Let all keys pass through to global handler
@@ -63,7 +63,7 @@ func (v *HelpView) setupUI() {
   [yellow]Ctrl+F[white].........Filter mode`
 
 	v.text.SetText(helpText)
-	
+
 	v.flex = tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(v.text, 70, 1, true).

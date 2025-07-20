@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/redis"
 	"redis-cli-dashboard/internal/logger"
+	"redis-cli-dashboard/internal/redis"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
@@ -19,11 +19,11 @@ type KeysView struct {
 	config *config.Config
 
 	// Components
-	flex         *tview.Flex
-	table        *tview.Table
-	keyDetail    *tview.TextView
-	filter       *tview.InputField
-	commandInput *tview.InputField
+	flex          *tview.Flex
+	table         *tview.Table
+	keyDetail     *tview.TextView
+	filter        *tview.InputField
+	commandInput  *tview.InputField
 	commandOutput *tview.TextView
 
 	// State
@@ -61,7 +61,7 @@ func NewKeysView(redisClient *redis.Client, cfg *config.Config) *KeysView {
 	logger.Logger.Println("[KeysView] Async loadKeys() scheduled.")
 
 	return view
-}	// setupUI initializes the UI components
+} // setupUI initializes the UI components
 func (v *KeysView) setupUI() {
 	// Create table for keys
 	v.table = tview.NewTable().
@@ -137,7 +137,7 @@ func (v *KeysView) setupUI() {
 				v.setFocus(0) // Return to table on escape
 			}
 		})
-	
+
 	// Command output
 	v.commandOutput = tview.NewTextView().
 		SetDynamicColors(true).
@@ -151,9 +151,9 @@ func (v *KeysView) setupUI() {
 
 	// Set up view-specific key handling
 	v.flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		logger.Tracef("[KeysView] Input capture received: Key=%v, Rune=%c, FocusIndex=%d", 
+		logger.Tracef("[KeysView] Input capture received: Key=%v, Rune=%c, FocusIndex=%d",
 			event.Key(), event.Rune(), v.focusIndex)
-		
+
 		// Handle view-specific keys only when table has focus (focusIndex == 0)
 		if v.focusIndex == 0 {
 			logger.Tracef("[KeysView] Handling view-specific keys (table has focus)")
@@ -195,12 +195,12 @@ func (v *KeysView) setupUI() {
 		} else {
 			logger.Tracef("[KeysView] Non-table focus (index=%d), passing key through", v.focusIndex)
 		}
-		
+
 		// Let all other events pass through to global handler
 		logger.Tracef("[KeysView] Event passed to global handler: Key=%v, Rune=%c", event.Key(), event.Rune())
 		return event
 	})
-	
+
 	v.refreshLayout()
 }
 
@@ -221,14 +221,14 @@ func (v *KeysView) refreshLayout() {
 
 	// Left side - filter and keys table
 	leftSide := tview.NewFlex().SetDirection(tview.FlexRow)
-	
+
 	// Filter
 	leftSide.AddItem(v.filter, 1, 0, false)
-	
+
 	// Keys table wrapper with border
 	keysWrapper := tview.NewFlex().SetDirection(tview.FlexRow)
 	keysWrapper.SetBorder(true).SetTitle("Keys")
-	
+
 	// Keys table (no border to avoid double border)
 	v.table.SetBorder(false).SetTitle("")
 	keysWrapper.AddItem(v.table, 0, 1, true)
@@ -238,8 +238,8 @@ func (v *KeysView) refreshLayout() {
 	v.keyDetail.SetBorder(true).SetTitle("Value")
 
 	// Add left and right sides to main content
-	mainContent.AddItem(leftSide, 0, 1, true)      // Left side gets equal space
-	mainContent.AddItem(v.keyDetail, 0, 1, false)  // Right side gets equal space
+	mainContent.AddItem(leftSide, 0, 1, true)     // Left side gets equal space
+	mainContent.AddItem(v.keyDetail, 0, 1, false) // Right side gets equal space
 
 	// Add main content to the main flex (no status bar)
 	v.flex.AddItem(mainContent, 0, 1, true)
@@ -299,23 +299,23 @@ func (v *KeysView) refreshKeys() {
 
 	for i, key := range displayKeys {
 		row := i + 1
-		
+
 		// Type column without icon
 		v.table.SetCell(row, 0, tview.NewTableCell(key.Type))
-		
+
 		// Key name
 		v.table.SetCell(row, 1, tview.NewTableCell(key.Name))
-		
+
 		// TTL
 		ttl := "-"
 		if key.TTL > 0 {
 			ttl = fmt.Sprintf("%ds", int64(key.TTL.Seconds()))
 		}
 		v.table.SetCell(row, 2, tview.NewTableCell(ttl))
-		
+
 		// Size
 		v.table.SetCell(row, 3, tview.NewTableCell(humanize.Bytes(uint64(key.MemoryUsage))))
-		
+
 		// Encoding
 		v.table.SetCell(row, 4, tview.NewTableCell(key.Encoding))
 	}
@@ -465,7 +465,7 @@ func (v *KeysView) formatCommandResult(result interface{}) string {
 	case string:
 		// Check if it looks like JSON
 		if (strings.HasPrefix(r, "{") && strings.HasSuffix(r, "}")) ||
-		   (strings.HasPrefix(r, "[") && strings.HasSuffix(r, "]")) {
+			(strings.HasPrefix(r, "[") && strings.HasSuffix(r, "]")) {
 			return r // Return JSON as-is for now
 		}
 		return fmt.Sprintf(`"%s"`, r)
@@ -539,7 +539,7 @@ func (v *KeysView) shouldReloadKeys(command string) bool {
 func (v *KeysView) setFocus(index int) {
 	logger.Debugf("[KeysView] Setting focus from index %d to %d", v.focusIndex, index)
 	v.focusIndex = index
-	
+
 	var focusComponent tview.Primitive
 	var componentName string
 	switch index {
@@ -562,9 +562,9 @@ func (v *KeysView) setFocus(index int) {
 		componentName = "table (default)"
 		focusComponent = v.table
 	}
-	
+
 	logger.Debugf("[KeysView] Focus set to: %s (index %d)", componentName, index)
-	
+
 	// Call the focus callback if set
 	if v.onFocusChange != nil && focusComponent != nil {
 		logger.Tracef("[KeysView] Calling focus callback for component: %s", componentName)
@@ -616,5 +616,3 @@ func (v *KeysView) getDisplayKeys() []*redis.KeyInfo {
 func (v *KeysView) Refresh() {
 	v.loadKeys()
 }
-
-

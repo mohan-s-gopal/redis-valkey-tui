@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 	"redis-cli-dashboard/internal/redis"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -66,7 +66,7 @@ func (v *CLIView) setupUI() {
 		SetDirection(tview.FlexRow).
 		AddItem(v.output, 0, 1, false).
 		AddItem(v.input, 3, 0, true)
-	
+
 	// Set up input capture on the main flex to handle global keys
 	v.flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Only handle global keys when input doesn't have focus

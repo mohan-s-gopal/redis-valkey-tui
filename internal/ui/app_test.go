@@ -1,11 +1,11 @@
 package ui
 
 import (
-	"testing"
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/redis"
-	"redis-cli-dashboard/internal/logger"
 	"github.com/stretchr/testify/assert"
+	"redis-cli-dashboard/internal/config"
+	"redis-cli-dashboard/internal/logger"
+	"redis-cli-dashboard/internal/redis"
+	"testing"
 )
 
 // Create a custom Redis client for testing
@@ -17,7 +17,7 @@ func newTestRedisClient() *redis.Client {
 		Port: 6379, // Use standard Redis port
 		DB:   0,
 	}
-	
+
 	// Try to create a real connection, but don't fail if it's not available
 	client, err := redis.New(cfg)
 	if err != nil {
@@ -31,7 +31,7 @@ func newTestRedisClient() *redis.Client {
 func TestNewApp(t *testing.T) {
 	// Initialize logger for tests
 	logger.Init()
-	
+
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -55,7 +55,7 @@ func TestNewApp(t *testing.T) {
 func TestAppInitialization(t *testing.T) {
 	// Initialize logger for tests
 	logger.Init()
-	
+
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -68,7 +68,7 @@ func TestAppInitialization(t *testing.T) {
 	}
 
 	app := NewApp(cfg)
-	
+
 	// Test setupUI
 	app.setupUI()
 	assert.NotNil(t, app.statusBar, "Status bar should be initialized")
@@ -94,7 +94,7 @@ func TestAppInitialization(t *testing.T) {
 func TestViewSwitching(t *testing.T) {
 	// Initialize logger for tests
 	logger.Init()
-	
+
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -113,10 +113,10 @@ func TestViewSwitching(t *testing.T) {
 		t.Skip("Redis server not available for testing")
 		return
 	}
-	
+
 	err := app.initializeViews()
 	assert.NoError(t, err, "View initialization should not error")
-	
+
 	testCases := []struct {
 		name     string
 		viewType ViewType
@@ -135,7 +135,7 @@ func TestViewSwitching(t *testing.T) {
 			app.testMode = true
 			app.switchView(tc.viewType)
 			assert.Equal(t, tc.viewType, app.currentView, "View should be switched correctly")
-			
+
 			// Test that getCurrentView returns the right component
 			currentView := app.getCurrentView()
 			assert.NotNil(t, currentView, "Current view should not be nil")
@@ -147,7 +147,7 @@ func TestViewSwitching(t *testing.T) {
 func TestViewSwitchingLogic(t *testing.T) {
 	// Initialize logger for tests
 	logger.Init()
-	
+
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -160,17 +160,17 @@ func TestViewSwitchingLogic(t *testing.T) {
 	}
 
 	app := NewApp(cfg)
-	app.testMode = true  // Enable test mode to avoid UI operations
+	app.testMode = true // Enable test mode to avoid UI operations
 	app.setupUI()
 	app.redis = newTestRedisClient()
 	if app.redis == nil {
 		t.Skip("Redis server not available for testing")
 		return
 	}
-	
+
 	err := app.initializeViews()
 	assert.NoError(t, err, "View initialization should not error")
-	
+
 	// Test getViewName method
 	assert.Equal(t, "Keys", app.getViewName(KeysViewType))
 	assert.Equal(t, "Info", app.getViewName(InfoViewType))
@@ -178,20 +178,20 @@ func TestViewSwitchingLogic(t *testing.T) {
 	assert.Equal(t, "CLI", app.getViewName(CLIViewType))
 	assert.Equal(t, "Config", app.getViewName(ConfigViewType))
 	assert.Equal(t, "Help", app.getViewName(HelpViewType))
-	
+
 	// Test executeCommand method
 	app.executeCommand("keys")
 	assert.Equal(t, KeysViewType, app.currentView)
-	
+
 	app.executeCommand("info")
 	assert.Equal(t, InfoViewType, app.currentView)
-	
+
 	app.executeCommand("monitor")
 	assert.Equal(t, MonitorViewType, app.currentView)
-	
+
 	app.executeCommand("cli")
 	assert.Equal(t, CLIViewType, app.currentView)
-	
+
 	app.executeCommand("config")
 	assert.Equal(t, ConfigViewType, app.currentView)
 }
@@ -200,7 +200,7 @@ func TestViewSwitchingLogic(t *testing.T) {
 func TestCleanup(t *testing.T) {
 	// Initialize logger for tests
 	logger.Init()
-	
+
 	cfg := &config.Config{
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -214,7 +214,7 @@ func TestCleanup(t *testing.T) {
 
 	app := NewApp(cfg)
 	app.redis = newTestRedisClient()
-	
+
 	// Create a metrics stop channel (simulating what would happen in real app)
 	app.metricsStopChan = make(chan struct{})
 
@@ -224,4 +224,3 @@ func TestCleanup(t *testing.T) {
 	// Verify that the metrics stop channel is closed and set to nil
 	assert.Nil(t, app.metricsStopChan, "Metrics stop channel should be set to nil after cleanup")
 }
-

@@ -51,7 +51,7 @@ func Main() {
 		os.Exit(1)
 	}
 	defer logger.Close()
-	
+
 	logger.Info("Starting redis-cli-dashboard...")
 	logger.Debugf("Verbosity level: %d, Console output: %t", *verbose, *console)
 

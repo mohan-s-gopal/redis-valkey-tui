@@ -2,10 +2,10 @@ package ui
 
 import (
 	"fmt"
-	"time"
+	"redis-cli-dashboard/internal/logger"
 	"redis-cli-dashboard/internal/redis"
 	"redis-cli-dashboard/internal/utils"
-	"redis-cli-dashboard/internal/logger"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

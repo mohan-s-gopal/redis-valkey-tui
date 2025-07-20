@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"redis-cli-dashboard/internal/utils"
 	"redis-cli-dashboard/internal/logger"
+	"redis-cli-dashboard/internal/utils"
 
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"
 )
-
 
 // createHeader creates the Redis-style header bar
 func (a *App) createHeader() *tview.Flex {
@@ -72,7 +71,7 @@ func (a *App) formatHeaderText() string {
 	usedMemory, _ := info["used_memory"].(int64)
 	connectedClients, _ := info["connected_clients"].(int64)
 	uptimeSeconds, _ := info["uptime_in_seconds"].(int64)
-	
+
 	memory := humanize.Bytes(uint64(usedMemory))
 	uptime := utils.FormatUptime(uptimeSeconds)
 
@@ -110,8 +109,8 @@ func (a *App) updateContextLine(context *tview.TextView) {
 	var viewContext string
 	switch a.currentView {
 	case KeysViewType:
-		viewContext = fmt.Sprintf("[yellow]Context: Keys(%d) [white]🔍 Filter: %s", 
-			a.keysView.GetKeyCount(), 
+		viewContext = fmt.Sprintf("[yellow]Context: Keys(%d) [white]🔍 Filter: %s",
+			a.keysView.GetKeyCount(),
 			a.keysView.GetFilter())
 	case InfoViewType:
 		viewContext = "[yellow]Context: Info"
@@ -170,5 +169,3 @@ func (a *App) updateMetrics() {
 		a.metrics.ConnectedClients = val
 	}
 }
-
-

@@ -74,10 +74,10 @@ func NewApp(cfg *config.Config) *App {
 
 // Run starts the application
 func (a *App) Run() error {
-	logger.Logger.Println("Starting application with configuration:", 
-		fmt.Sprintf("Redis: %s:%d/DB%d, MaxKeys: %d", 
-			a.config.Redis.Host, 
-			a.config.Redis.Port, 
+	logger.Logger.Println("Starting application with configuration:",
+		fmt.Sprintf("Redis: %s:%d/DB%d, MaxKeys: %d",
+			a.config.Redis.Host,
+			a.config.Redis.Port,
 			a.config.Redis.DB,
 			a.config.UI.MaxKeys))
 
@@ -100,12 +100,12 @@ func (a *App) Run() error {
 		logger.Logger.Printf("CRITICAL: Failed to get Redis server info: %v", err)
 		return fmt.Errorf("failed to get Redis server info: %w", err)
 	}
-	
+
 	version, _ := info["redis_version"].(string)
 	if version == "" {
 		version = "unknown"
 	}
-	
+
 	logger.Logger.Printf("SUCCESS: Connected to Redis server version: %s", version)
 	a.redis = redisClient
 
@@ -117,7 +117,7 @@ func (a *App) Run() error {
 			panic(r) // Re-panic after logging
 		}
 	}()
-	
+
 	a.setupUI()
 	logger.Logger.Println("UI components initialized successfully")
 
@@ -152,7 +152,7 @@ func (a *App) Run() error {
 		logger.Logger.Printf("CRITICAL: Application terminated with error: %v", err)
 		return fmt.Errorf("application runtime error: %w", err)
 	}
-	
+
 	logger.Logger.Println("Application terminated normally")
 	return nil
 }
@@ -168,7 +168,7 @@ func (a *App) initializeViews() error {
 	if a.keysView = NewKeysView(a.redis, a.config); a.keysView == nil {
 		return fmt.Errorf("failed to create KeysView")
 	}
-	
+
 	// Set up focus callback for KeysView
 	a.keysView.SetFocusCallback(func(component tview.Primitive) {
 		if !a.testMode && a.app != nil {
@@ -235,7 +235,7 @@ func (a *App) setupUI() {
 // setupLayout creates the main layout
 func (a *App) setupLayout() {
 	logger.Info("Setting up main layout...")
-	
+
 	// Create the main layout
 	mainLayout := tview.NewFlex().
 		SetDirection(tview.FlexRow)
@@ -252,29 +252,29 @@ func (a *App) setupLayout() {
 	// Create a content pages container to manage view switching
 	logger.Debug("Creating content pages container")
 	a.contentPages = tview.NewPages()
-	
+
 	// Add all views to the content pages
 	logger.Debug("Adding all views to content pages")
 	logger.Tracef("Adding Keys view: %p", a.keysView.GetComponent())
 	a.contentPages.AddPage("keys", a.keysView.GetComponent(), true, true)
-	
+
 	logger.Tracef("Adding Info view: %p", a.infoView.GetComponent())
 	a.contentPages.AddPage("info", a.infoView.GetComponent(), true, false)
-	
+
 	logger.Tracef("Adding Monitor view: %p", a.monitorView.GetComponent())
 	a.contentPages.AddPage("monitor", a.monitorView.GetComponent(), true, false)
-	
+
 	logger.Tracef("Adding CLI view: %p", a.cliView.GetComponent())
 	a.contentPages.AddPage("cli", a.cliView.GetComponent(), true, false)
-	
+
 	logger.Tracef("Adding Config view: %p", a.configView.GetComponent())
 	a.contentPages.AddPage("config", a.configView.GetComponent(), true, false)
-	
+
 	logger.Tracef("Adding Help view: %p", a.helpView.GetComponent())
 	a.contentPages.AddPage("help_view", a.helpView.GetComponent(), true, false)
-	
+
 	logger.Debug("All views added to content pages")
-	
+
 	// Add the content pages to the main layout
 	logger.Debug("Adding content pages to main layout")
 	mainLayout.AddItem(a.contentPages, 0, 1, true)
@@ -289,10 +289,10 @@ func (a *App) setupLayout() {
 
 	// Set up the pages
 	logger.Debug("Setting up application pages")
-	a.pages.RemovePage("main")  // Remove the existing main page
+	a.pages.RemovePage("main") // Remove the existing main page
 	a.pages.AddPage("main", mainLayout, true, true)
 	logger.Debug("Main page added to application pages")
-	
+
 	// Ensure help modal page exists
 	if a.helpModal != nil && !a.pages.HasPage("help") {
 		logger.Debug("Adding help modal page")
@@ -302,7 +302,7 @@ func (a *App) setupLayout() {
 	// Set the root
 	logger.Debug("Setting application root...")
 	a.app.SetRoot(a.pages, true)
-	
+
 	// Set initial focus to current view
 	if !a.testMode {
 		currentView := a.getCurrentView()
@@ -315,28 +315,28 @@ func (a *App) setupLayout() {
 	} else {
 		logger.Debug("Skipping focus setting (test mode)")
 	}
-	
+
 	logger.Info("Application root set successfully")
 }
 
 // getCurrentView returns the current view component
 func (a *App) getCurrentView() tview.Primitive {
 	logger.Tracef("[getCurrentView] ENTRY: Getting current view for type: %s", a.getViewName(a.currentView))
-	
+
 	if a == nil {
 		logger.Error("[getCurrentView] App instance is nil!")
 		return nil
 	}
-	
+
 	logger.Tracef("[getCurrentView] App instance is valid, calling getCurrentViewForType")
 	result := a.getCurrentViewForType(a.currentView)
-	
+
 	if result == nil {
 		logger.Error("[getCurrentView] Result is nil!")
 	} else {
 		logger.Tracef("[getCurrentView] SUCCESS: Returning view component %p for type: %s", result, a.getViewName(a.currentView))
 	}
-	
+
 	logger.Tracef("[getCurrentView] EXIT")
 	return result
 }
@@ -344,15 +344,15 @@ func (a *App) getCurrentView() tview.Primitive {
 // getCurrentViewForType returns the view component for the given view type
 func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 	logger.Tracef("[getCurrentViewForType] ENTRY: Getting view for type: %s", a.getViewName(viewType))
-	
+
 	if a == nil {
 		logger.Error("[getCurrentViewForType] App instance is nil!")
 		return nil
 	}
-	
+
 	var result tview.Primitive
 	var viewName string
-	
+
 	switch viewType {
 	case KeysViewType:
 		viewName = "KeysView"
@@ -364,7 +364,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling keysView.GetComponent()")
 		result = a.keysView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] keysView.GetComponent() returned: %p", result)
-		
+
 	case InfoViewType:
 		viewName = "InfoView"
 		logger.Tracef("[getCurrentViewForType] Case InfoViewType - checking a.infoView: %p", a.infoView)
@@ -375,7 +375,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling infoView.GetComponent()")
 		result = a.infoView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] infoView.GetComponent() returned: %p", result)
-		
+
 	case MonitorViewType:
 		viewName = "MonitorView"
 		logger.Tracef("[getCurrentViewForType] Case MonitorViewType - checking a.monitorView: %p", a.monitorView)
@@ -386,7 +386,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling monitorView.GetComponent()")
 		result = a.monitorView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] monitorView.GetComponent() returned: %p", result)
-		
+
 	case CLIViewType:
 		viewName = "CLIView"
 		logger.Tracef("[getCurrentViewForType] Case CLIViewType - checking a.cliView: %p", a.cliView)
@@ -397,7 +397,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling cliView.GetComponent()")
 		result = a.cliView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] cliView.GetComponent() returned: %p", result)
-		
+
 	case ConfigViewType:
 		viewName = "ConfigView"
 		logger.Tracef("[getCurrentViewForType] Case ConfigViewType - checking a.configView: %p", a.configView)
@@ -408,7 +408,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling configView.GetComponent()")
 		result = a.configView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] configView.GetComponent() returned: %p", result)
-		
+
 	case HelpViewType:
 		viewName = "HelpView"
 		logger.Tracef("[getCurrentViewForType] Case HelpViewType - checking a.helpView: %p", a.helpView)
@@ -419,7 +419,7 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		logger.Tracef("[getCurrentViewForType] Calling helpView.GetComponent()")
 		result = a.helpView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] helpView.GetComponent() returned: %p", result)
-		
+
 	default:
 		viewName = "Default (KeysView)"
 		logger.Warnf("[getCurrentViewForType] Unknown view type: %d, defaulting to KeysView", viewType)
@@ -431,13 +431,13 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 		result = a.keysView.GetComponent()
 		logger.Tracef("[getCurrentViewForType] Default keysView.GetComponent() returned: %p", result)
 	}
-	
+
 	if result == nil {
 		logger.Errorf("[getCurrentViewForType] ERROR: %s GetComponent() returned nil!", viewName)
 	} else {
 		logger.Tracef("[getCurrentViewForType] SUCCESS: %s GetComponent() returned valid component: %p", viewName, result)
 	}
-	
+
 	logger.Tracef("[getCurrentViewForType] EXIT: Returning %p for view type %s", result, a.getViewName(viewType))
 	return result
 }
@@ -446,12 +446,12 @@ func (a *App) getCurrentViewForType(viewType ViewType) tview.Primitive {
 func (a *App) switchView(view ViewType) {
 	logger.Infof("[switchView] ENTRY: Switching to view: %s", a.getViewName(view))
 	logger.Debugf("[switchView] Previous view: %s, New view: %s", a.getViewName(a.currentView), a.getViewName(view))
-	
+
 	if a == nil {
 		logger.Error("[switchView] CRITICAL: App instance is nil!")
 		return
 	}
-	
+
 	logger.Tracef("[switchView] Setting currentView from %s to %s", a.getViewName(a.currentView), a.getViewName(view))
 	a.currentView = view
 	logger.Tracef("[switchView] currentView set successfully to: %s", a.getViewName(a.currentView))
@@ -475,46 +475,46 @@ func (a *App) switchView(view ViewType) {
 	// Only do UI operations if not in test mode
 	if !a.testMode && a.app != nil && a.contentPages != nil {
 		logger.Debug("[switchView] All prerequisites met, performing UI operations")
-		
+
 		// Get the page name for the view
 		logger.Tracef("[switchView] Getting page name for view: %s", a.getViewName(view))
 		pageName := a.getPageNameForView(view)
 		logger.Debugf("[switchView] Page name resolved: %s", pageName)
-		
+
 		// Get current view component
 		logger.Tracef("[switchView] Getting current view component...")
 		currentView := a.getCurrentView()
 		logger.Tracef("[switchView] getCurrentView() completed, result: %p", currentView)
-		
+
 		if currentView != nil {
 			logger.Tracef("[switchView] Current view is valid, attempting UI operations")
-			
+
 			// Try direct UI operations first (without QueueUpdateDraw)
 			logger.Tracef("[switchView] Attempting direct UI operations (bypass QueueUpdateDraw)")
-			
+
 			// Direct page switch
 			logger.Tracef("[switchView] Direct call to contentPages.SwitchToPage(%s)", pageName)
 			a.contentPages.SwitchToPage(pageName)
 			logger.Tracef("[switchView] Direct SwitchToPage completed")
-			
+
 			// Verify the direct page switch worked
 			directFrontPage, directFrontName := a.contentPages.GetFrontPage()
 			logger.Tracef("[switchView] Direct switch result - front page: %s (%s)", directFrontName, directFrontPage)
-			
+
 			// Direct focus
 			logger.Tracef("[switchView] Direct call to app.SetFocus on component: %p", currentView)
 			a.app.SetFocus(currentView)
 			logger.Tracef("[switchView] Direct SetFocus completed")
-			
+
 			// Verify direct focus was set
 			directFocusedComponent := a.app.GetFocus()
 			logger.Tracef("[switchView] Direct focus result - focused component: %p", directFocusedComponent)
-			
+
 			logger.Tracef("[switchView] Direct UI operations completed successfully")
-			
+
 			// NOTE: QueueUpdateDraw removed due to hanging issues - direct operations are sufficient
 			logger.Tracef("[switchView] Skipping QueueUpdateDraw to prevent hanging - direct operations handle view switching")
-			
+
 			// Log some diagnostics about the application state
 			logger.Tracef("[switchView] Post-QueueUpdateDraw diagnostics:")
 			logger.Tracef("[switchView]   - Application running: %p", a.app)
@@ -527,7 +527,7 @@ func (a *App) switchView(view ViewType) {
 		} else {
 			logger.Error("[switchView] CRITICAL: Current view is nil, cannot switch focus")
 			logger.Tracef("[switchView] Debugging getCurrentView() call failure...")
-			
+
 			// Debug why getCurrentView returned nil
 			logger.Tracef("[switchView] Debug: a.currentView = %d (%s)", a.currentView, a.getViewName(a.currentView))
 			logger.Tracef("[switchView] Debug: Checking individual view pointers:")
@@ -550,7 +550,7 @@ func (a *App) switchView(view ViewType) {
 			logger.Error("[switchView]   - Reason: ContentPages is nil")
 		}
 	}
-	
+
 	logger.Infof("[switchView] EXIT: View switch completed for: %s", a.getViewName(view))
 }
 
@@ -583,7 +583,7 @@ func (a *App) getViewName(view ViewType) string {
 // getPageNameForView returns the page name for a view type
 func (a *App) getPageNameForView(view ViewType) string {
 	logger.Tracef("[getPageNameForView] ENTRY: Getting page name for view type: %d (%s)", view, a.getViewName(view))
-	
+
 	var pageName string
 	switch view {
 	case KeysViewType:
@@ -602,7 +602,7 @@ func (a *App) getPageNameForView(view ViewType) string {
 		logger.Warnf("[getPageNameForView] Unknown view type: %d, defaulting to 'keys'", view)
 		pageName = "keys"
 	}
-	
+
 	logger.Tracef("[getPageNameForView] EXIT: Returning page name '%s' for view type %s", pageName, a.getViewName(view))
 	return pageName
 }
@@ -628,20 +628,20 @@ func (a *App) getViewStatus() string {
 // updateCommandBar updates the command bar based on current view
 func (a *App) updateCommandBar() {
 	logger.Tracef("[updateCommandBar] ENTRY: Updating command bar for view: %s", a.getViewName(a.currentView))
-	
+
 	if a.commandBar == nil {
 		logger.Error("[updateCommandBar] Command bar is nil, cannot update")
 		return
 	}
-	
+
 	logger.Tracef("[updateCommandBar] Command bar is valid: %p", a.commandBar)
-	
+
 	baseText := "[yellow]Navigation:[white] 1=Keys 2=Info 3=Monitor 4=CLI 5=Config 6=Help | [yellow]Global:[white] ESC=home ?=help Ctrl+C=quit"
 	logger.Tracef("[updateCommandBar] Base text prepared")
-	
+
 	var viewSpecific string
 	logger.Tracef("[updateCommandBar] Determining view-specific text for: %s", a.getViewName(a.currentView))
-	
+
 	switch a.currentView {
 	case KeysViewType:
 		viewSpecific = " | [yellow]Keys:[white] c=command /=filter r=refresh"
@@ -665,21 +665,21 @@ func (a *App) updateCommandBar() {
 		logger.Warnf("[updateCommandBar] Unknown view type: %d, using empty view-specific text", a.currentView)
 		viewSpecific = ""
 	}
-	
+
 	finalText := baseText + viewSpecific
 	logger.Tracef("[updateCommandBar] Final text prepared (length: %d chars)", len(finalText))
-	
+
 	a.commandBar.SetText(finalText)
 	logger.Tracef("[updateCommandBar] Command bar text set successfully")
-	
+
 	logger.Tracef("[updateCommandBar] EXIT: Command bar updated for view: %s", a.getViewName(a.currentView))
 }
 
 // handleGlobalKeys handles global key bindings
 func (a *App) handleGlobalKeys(event *tcell.EventKey) *tcell.EventKey {
-	logger.Tracef("Global key handler received event: Key=%v, Rune=%c, Mod=%v", 
+	logger.Tracef("Global key handler received event: Key=%v, Rune=%c, Mod=%v",
 		event.Key(), event.Rune(), event.Modifiers())
-	
+
 	// Only handle specific global keys, let everything else pass through to views
 	switch event.Key() {
 	case tcell.KeyCtrlC:

@@ -35,7 +35,7 @@ func Init() error {
 func InitWithLevel(level LogLevel, console bool) error {
 	currentLevel = level
 	enableConsole = console
-	
+
 	// Create logs directory in user's home directory
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -56,8 +56,8 @@ func InitWithLevel(level LogLevel, console bool) error {
 
 	// Create logger with more detailed format
 	Logger = log.New(logFile, "", log.LstdFlags|log.Lmicroseconds)
-	
-	logMessage("INFO", fmt.Sprintf("Logger initialized. Log file: %s, Level: %s, Console: %t", 
+
+	logMessage("INFO", fmt.Sprintf("Logger initialized. Log file: %s, Level: %s, Console: %t",
 		logPath, getLevelName(currentLevel), enableConsole))
 	return nil
 }
@@ -96,12 +96,12 @@ func logMessage(level string, message string) {
 	if Logger == nil {
 		return
 	}
-	
+
 	caller := getCallerInfo()
 	logLine := fmt.Sprintf("[%s] [%s] %s", level, caller, message)
-	
+
 	Logger.Println(logLine)
-	
+
 	// Also log to console if enabled
 	if enableConsole {
 		fmt.Fprintf(os.Stderr, "%s\n", logLine)

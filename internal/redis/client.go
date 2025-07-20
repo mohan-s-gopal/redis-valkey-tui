@@ -308,11 +308,11 @@ type KeyInfo struct {
 // Metrics holds Redis server metrics
 type Metrics struct {
 	ConnectedClients       int64
-	UsedMemory            uint64
-	UsedMemoryRss         uint64
+	UsedMemory             uint64
+	UsedMemoryRss          uint64
 	TotalCommandsProcessed int64
-	KeyspaceHits          int64
-	KeyspaceMisses        int64
+	KeyspaceHits           int64
+	KeyspaceMisses         int64
 	InstantaneousOpsPerSec int64
-	UptimeInSeconds       int64
+	UptimeInSeconds        int64
 }

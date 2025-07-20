@@ -36,7 +36,7 @@ func (v *InfoView) setupUI() {
 	v.component.SetBorder(true).
 		SetTitle("Server Information").
 		SetBorderPadding(0, 0, 1, 1)
-	
+
 	// Set up input capture to pass through global navigation keys
 	v.component.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		// Handle view-specific keys
@@ -46,7 +46,7 @@ func (v *InfoView) setupUI() {
 			v.loadInfo()
 			return nil
 		}
-		
+
 		// Let all other keys pass through to global handler
 		return event
 	})
