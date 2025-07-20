@@ -32,3 +32,5 @@ go.work.sum
 # .vscode/
 
 redis-cli-dashboard
+# Added by goreleaser init:
+dist/

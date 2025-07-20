@@ -1,0 +1,36 @@
+name: GoReleaser
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers only on version tags like v1.0.0, v0.1.2, etc.
+
+permissions:
+  contents: write  # Needed to create GitHub Releases
+  packages: write  # Optional: needed if you push to GitHub Packages
+
+jobs:
+  release:
+    name: Release with GoReleaser
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🧰 Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: 🔐 Set up GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: upload release artifacts to GitHub
+      # GoReleaser already handles this if configured in `.goreleaser.yaml`
