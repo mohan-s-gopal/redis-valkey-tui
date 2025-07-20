@@ -1,57 +1,73 @@
 # redis-cli-dashboard
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/mohan-s-gopal/redis-cli-dashboard)](https://goreportcard.com/report/github.com/mohan-s-gopal/redis-cli-dashboard)
+[![Release](https://img.shields.io/github/release/mohan-s-gopal/redis-cli-dashboard.svg)](https://github.com/mohan-s-gopal/redis-cli-dashboard/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built with Go. Provides an intuitive, keyboard-driven interface for Redis database management with real-time monitoring, advanced key management, and built-in CLI functionality.
 
-![Redis CLI Dashboard](docs/screenshot.png)
+<!-- Demo GIF - replace with actual recording -->
+![Redis CLI Dashboard Demo](assets/demo.png)
 
 ## 🌟 Features
 
-### 🎯 **Multi-View Navigation**
-- **6 Specialized Views**: Keys, Info, Monitor, CLI, Config, and Help
-- **Instant View Switching**: Number keys (1-6) for immediate navigation
-- **Home Navigation**: ESC key returns to main screen (Keys view)
-- **Clean Interface**: No blocking or hanging during view transitions
-
-### 🔧 **Advanced Key Management**
-- **Real-time Key Browser**: Browse Redis keys with type indicators and metadata
-- **Smart Filtering**: Live search and pattern matching with `/` key
-- **Key Operations**: View, edit, delete keys with TTL management
-- **Type Support**: Strings, Lists, Sets, Hashes, Sorted Sets with proper formatting
-- **Memory Usage**: Display key sizes and memory consumption
-
-### 📊 **Real-time Monitoring**
-- **Live Metrics**: Server info, memory usage, connected clients
-- **Performance Tracking**: Operations per second, command statistics
-- **Connection Status**: Real-time connection health monitoring
-- **Header Display**: Always-visible server status and database info
-
-### 💻 **Integrated CLI**
-- **Full Redis CLI**: Execute any Redis command directly in the interface
-- **Command History**: Navigate previous commands with arrow keys
-- **Syntax Support**: Proper command formatting and response display
-- **Quick Access**: Switch between GUI and CLI modes instantly
-
-### ⚙️ **Configuration Management**
-- **Live Config View**: Display current Redis and application settings
-- **Connection Management**: Host, port, database, authentication settings
-- **UI Preferences**: Theme, refresh intervals, display options
-- **Save/Reset**: Configuration persistence and defaults
-
-### 🎨 **User Experience**
-- **Responsive TUI**: Built with tview for smooth terminal experience
-- **Keyboard Shortcuts**: Efficient navigation with intuitive key bindings
-- **Status Indicators**: Real-time feedback and operation status
-- **Help System**: Built-in help with comprehensive command reference
-- **Error Handling**: Graceful error handling with user-friendly messages
+- 🎯 Multi-View Navigation
+- 🔧 Advanced Key Management
+- 📊 Real-time Monitoring
+- 💻 Integrated CLI
+- ⚙️ Configuration Management
+- 🎨 User Experience
 
 ## 🚀 Quick Start
 
 ### Installation
 
+#### Option 1: Download Pre-built Binaries (Recommended)
+```bash
+# Linux (x86_64)
+curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Linux_x86_64.tar.gz | tar xz
+sudo mv redis-cli-dashboard /usr/local/bin/
+
+# Linux (ARM64)
+curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Linux_arm64.tar.gz | tar xz
+sudo mv redis-cli-dashboard /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Darwin_x86_64.tar.gz | tar xz
+sudo mv redis-cli-dashboard /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Darwin_arm64.tar.gz | tar xz
+sudo mv redis-cli-dashboard /usr/local/bin/
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri "https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Windows_x86_64.zip" -OutFile "redis-cli-dashboard.zip"
+Expand-Archive -Path "redis-cli-dashboard.zip" -DestinationPath "."
+# Add to PATH or move to desired location
+```
+
+#### Option 2: Install via Go
+```bash
+go install github.com/mohan-s-gopal/redis-cli-dashboard@latest
+```
+
+#### Option 3: Build from Source
 ```bash
 git clone https://github.com/mohan-s-gopal/redis-cli-dashboard.git
 cd redis-cli-dashboard
 go build -o redis-cli-dashboard ./cmd
+```
+
+### Verify Installation
+
+```bash
+# Check version
+redis-cli-dashboard -version
+
+# Test connection to local Redis
+redis-cli-dashboard
+
+# Should display the TUI interface if Redis is running on localhost:6379
 ```
 
 ### Running
@@ -65,6 +81,28 @@ go build -o redis-cli-dashboard ./cmd
 
 # Enable debug logging
 ./redis-cli-dashboard -v 2
+```
+
+## 📋 Command Line Options
+
+```
+Usage: redis-cli-dashboard [OPTIONS]
+
+Connection Options:
+  -host string        Redis host (default "localhost")
+  -port int           Redis port (default 6379)
+  -password string    Redis password
+  -db int             Redis database number (default 0)
+
+Application Options:
+  -config string     Config file path (default "~/.redis-cli-dashboard/config.yaml")
+  -v int             Verbosity level 0-4 (default 0)
+  -version           Show version information
+
+Examples:
+  redis-cli-dashboard                                    # Connect to localhost:6379
+  redis-cli-dashboard -host prod.redis.com -port 6380    # Connect to remote Redis
+  redis-cli-dashboard -db 2 -v 2                         # Use database 2 with debug logging
 ```
 
 ### Configuration
@@ -131,33 +169,7 @@ ui:
 | `c` | Clear screen |
 | `r` | Refresh metrics |
 
-## 🏗️ Architecture
 
-### Project Structure
-```
-redis-cli-dashboard/
-├── cmd/                    # Application entry point
-├── internal/
-│   ├── config/            # Configuration management
-│   ├── logger/            # Logging system
-│   ├── redis/             # Redis client wrapper
-│   ├── ui/                # TUI components
-│   │   ├── app.go         # Main application
-│   │   ├── keys_view.go   # Key browser
-│   │   ├── cli_view.go    # CLI interface
-│   │   ├── monitor_view.go # Monitoring
-│   │   └── ...            # Other views
-│   └── utils/             # Utility functions
-├── docs/                  # Documentation
-└── README.md
-```
-
-### Key Components
-- **TUI Framework**: [tview](https://github.com/rivo/tview) for terminal interface
-- **Redis Client**: [go-redis](https://github.com/redis/go-redis) for Redis connectivity
-- **Configuration**: YAML-based configuration with defaults
-- **Logging**: Structured logging with configurable verbosity
-- **Testing**: Comprehensive test coverage for core functionality
 
 ## 🔧 Development
 
@@ -191,91 +203,3 @@ go test -v ./internal/redis
 2. Run tests to ensure functionality
 3. Build and test the application
 4. Submit pull request with description
-
-## 📋 Command Line Options
-
-```
-Usage: redis-cli-dashboard [OPTIONS]
-
-Connection Options:
-  -host string        Redis host (default "localhost")
-  -port int          Redis port (default 6379)
-  -password string   Redis password
-  -db int           Redis database number (default 0)
-
-Application Options:
-  -config string     Config file path (default "~/.redis-cli-dashboard/config.yaml")
-  -v int            Verbosity level 0-4 (default 0)
-  -version          Show version information
-
-Examples:
-  redis-cli-dashboard                                    # Connect to localhost:6379
-  redis-cli-dashboard -host prod.redis.com -port 6380   # Connect to remote Redis
-  redis-cli-dashboard -db 2 -v 2                        # Use database 2 with debug logging
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Connection Failed**
-```bash
-# Check Redis server status
-redis-cli ping
-
-# Test with specific host/port
-redis-cli -h your-host -p your-port ping
-```
-
-**UI Not Displaying Correctly**
-- Ensure terminal supports color and has sufficient size (minimum 80x24)
-- Try different terminal emulators if issues persist
-- Check terminal environment variables (`TERM`, `COLORTERM`)
-
-**High Memory Usage**
-- Reduce `max_keys` in configuration
-- Lower `refresh_interval` to reduce update frequency
-- Use filtering to limit displayed keys
-
-### Debug Mode
-```bash
-# Enable detailed logging
-./redis-cli-dashboard -v 4
-
-# Check logs
-tail -f ~/.redis-cli-dashboard/logs/app.log
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Areas for Contribution
-- Additional Redis data type support
-- Performance optimizations
-- UI/UX improvements
-- Documentation and examples
-- Test coverage expansion
-- Bug fixes and stability improvements
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [k9s](https://github.com/derailed/k9s) for Kubernetes
-- Built with [tview](https://github.com/rivo/tview) TUI framework
-- Uses [go-redis](https://github.com/redis/go-redis) for Redis connectivity
-- Community feedback and contributions
-
-## 🔗 Links
-
-- **Repository**: https://github.com/mohan-s-gopal/redis-cli-dashboard
-- **Issues**: https://github.com/mohan-s-gopal/redis-cli-dashboard/issues
-- **Documentation**: [docs/](docs/)
-- **Releases**: https://github.com/mohan-s-gopal/redis-cli-dashboard/releases
-
----
-
-**Made with ❤️ for the Redis community**
