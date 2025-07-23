@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"redis-cli-dashboard/internal/logger"
 	"redis-cli-dashboard/internal/redis"
-	"redis-cli-dashboard/internal/utils"
+	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -143,6 +144,13 @@ func (v *MonitorView) loadMetrics() {
 		return
 	}
 
+	// Get Redis info for additional details
+	info, err := v.redis.Info()
+	if err != nil {
+		v.component.SetText(fmt.Sprintf("[red]Error loading Redis info: %s", err))
+		return
+	}
+
 	// Get current text and append new metrics
 	currentText := v.component.GetText(false)
 	timestamp := time.Now().Format("15:04:05")
@@ -153,38 +161,74 @@ func (v *MonitorView) loadMetrics() {
 		hitRate = float64(metrics.KeyspaceHits) / float64(metrics.KeyspaceHits+metrics.KeyspaceMisses) * 100
 	}
 
-	// Format metrics
+	// Parse additional metrics from info
+	slowlogLen := getInfoValue(info, "slowlog_len", "0")
+	totalConnections := getInfoValue(info, "total_connections_received", "0")
+	rejectedConnections := getInfoValue(info, "rejected_connections", "0")
+
+	// Get cluster information and node details
+	clusterEnabled := getInfoValue(info, "cluster_enabled", "0")
+	nodeTable := ""
+
+	if clusterEnabled == "1" {
+		// Get cluster nodes information
+		nodeTable = v.getClusterNodesTable()
+	} else {
+		// For standalone, show current node info
+		role := getInfoValue(info, "role", "master")
+		nodeTable = fmt.Sprintf("  [green]%-15s %-10s %-15s %-10s[white]\n  %-15s %-10s %-15s %-10s",
+			"Node ID", "Role", "Host:Port", "Status",
+			"localhost", role, "127.0.0.1:6379", "connected")
+	}
+
+	// Format metrics with enhanced information
 	metricsText := fmt.Sprintf(`[yellow]%s[white] - Redis Metrics:
+
+[cyan]━━━ Client Connections ━━━[white]
   [green]Connected Clients:[white] %d
+  [green]Total Connections:[white] %s
+  [green]Rejected Connections:[white] %s
+
+[cyan]━━━ Memory Usage ━━━[white]
   [green]Used Memory:[white] %s
   [green]Used Memory RSS:[white] %s
+
+[cyan]━━━ Command Statistics ━━━[white]
   [green]Total Commands:[white] %d
   [green]Ops/sec:[white] %d
   [green]Keyspace Hits:[white] %d
   [green]Keyspace Misses:[white] %d
   [green]Hit Rate:[white] %.2f%%
-  [green]Uptime:[white] %s
+
+[cyan]━━━ Slow Queries Log ━━━[white]
+  [green]Slow Log Length:[white] %s
+
+[cyan]━━━ Nodes ━━━[white]
+%s
 
 `,
 		timestamp,
 		metrics.ConnectedClients,
-		formatBytes(uint64(metrics.UsedMemory)),
-		formatBytes(uint64(metrics.UsedMemoryRss)),
+		totalConnections,
+		rejectedConnections,
+		humanize.Bytes(uint64(metrics.UsedMemory)),
+		humanize.Bytes(uint64(metrics.UsedMemoryRss)),
 		metrics.TotalCommandsProcessed,
 		metrics.InstantaneousOpsPerSec,
 		metrics.KeyspaceHits,
 		metrics.KeyspaceMisses,
 		hitRate,
-		utils.FormatUptime(metrics.UptimeInSeconds),
+		slowlogLen,
+		nodeTable,
 	)
 
 	// Append to existing text
 	newText := currentText + metricsText
 
-	// Keep only last 100 lines to prevent memory issues
+	// Keep only last 50 lines to prevent memory issues
 	lines := splitLines(newText)
-	if len(lines) > 100 {
-		lines = lines[len(lines)-100:]
+	if len(lines) > 50 {
+		lines = lines[len(lines)-50:]
 		newText = joinLines(lines)
 	}
 
@@ -194,12 +238,78 @@ func (v *MonitorView) loadMetrics() {
 	v.component.ScrollToEnd()
 }
 
+// getClusterNodesTable returns formatted cluster nodes information
+func (v *MonitorView) getClusterNodesTable() string {
+	// Try to get cluster nodes information
+	result, err := v.redis.ClusterNodes()
+	if err != nil {
+		return "  [red]Error getting cluster nodes info[white]"
+	}
+
+	// Parse cluster nodes output
+	lines := splitLines(result)
+	if len(lines) == 0 {
+		return "  [yellow]No cluster nodes found[white]"
+	}
+
+	table := fmt.Sprintf("  [green]%-40s %-10s %-20s %-10s[white]\n", "Node ID", "Role", "Host:Port", "Status")
+	table += fmt.Sprintf("  [green]%s[white]\n", "────────────────────────────────────────────────────────────────────────────────")
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		// Parse node line format: <id> <ip:port@cport> <flags> <master> <ping-sent> <pong-recv> <config-epoch> <link-state> <slot> <slot> ... <slot>
+		parts := strings.Fields(line)
+		if len(parts) < 8 {
+			continue
+		}
+
+		nodeID := parts[0][:8] + "..."              // Truncate node ID for display
+		hostPort := strings.Split(parts[1], "@")[0] // Remove cluster port
+		flags := parts[2]
+		linkState := parts[7]
+
+		// Determine role from flags
+		role := "slave"
+		if strings.Contains(flags, "master") {
+			role = "master"
+		}
+		if strings.Contains(flags, "myself") {
+			role += " (self)"
+		}
+
+		// Color code status
+		status := linkState
+		if linkState == "connected" {
+			status = "[green]connected[white]"
+		} else {
+			status = "[red]" + linkState + "[white]"
+		}
+
+		table += fmt.Sprintf("  %-40s %-10s %-20s %s\n", nodeID, role, hostPort, status)
+	}
+
+	return table
+}
+
+// getInfoValue safely extracts a value from info map
+func getInfoValue(info map[string]interface{}, key, defaultValue string) string {
+	if val, ok := info[key]; ok {
+		if strVal, ok := val.(string); ok {
+			return strVal
+		}
+	}
+	return defaultValue
+}
+
 // Refresh refreshes the monitor view
 func (v *MonitorView) Refresh() {
 	v.loadMetrics()
 }
 
-// getFormattedUptime formats uptime in seconds to human readable format
+// getFormattedUptime formats uptime in seconds to human readable format with minutes
 func getFormattedUptime(seconds int64) string {
 	if seconds < 60 {
 		return fmt.Sprintf("%ds", seconds)
@@ -213,7 +323,8 @@ func getFormattedUptime(seconds int64) string {
 
 	days := seconds / 86400
 	hours := (seconds % 86400) / 3600
-	return fmt.Sprintf("%dd %dh", days, hours)
+	minutes := ((seconds % 86400) % 3600) / 60
+	return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
 }
 
 // splitLines splits text into lines

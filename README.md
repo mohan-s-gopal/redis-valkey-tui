@@ -11,12 +11,40 @@ A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built
 
 ## 🌟 Features
 
-- 🎯 Multi-View Navigation
-- 🔧 Advanced Key Management
-- 📊 Real-time Monitoring
-- 💻 Integrated CLI
-- ⚙️ Configuration Management
-- 🎨 User Experience
+### 🎯 Multi-View Navigation
+- **Keys View**: Advanced key browsing with filtering, type display, and TTL management
+- **Info View**: Comprehensive Redis server information and statistics
+- **Monitor View**: Real-time metrics with client connections, command statistics, slow queries, and cluster nodes
+- **CLI View**: Integrated Redis CLI with command history and scrollable output
+- **Config View**: Runtime configuration management
+- **Help View**: Interactive help and keyboard shortcuts
+
+### 🔧 Advanced Key Management
+- Smart key filtering and searching
+- Multiple data type support (String, Hash, List, Set, ZSet, etc.)
+- Batch operations and key expiration management
+- Memory usage and TTL information display
+
+### 📊 Real-time Monitoring
+- **Client Connections**: Active clients, total connections, rejected connections
+- **Memory Usage**: Used memory and RSS with human-readable formatting
+- **Command Statistics**: Total commands, operations per second, hit/miss rates
+- **Slow Query Log**: Monitor slow-running operations
+- **Cluster Nodes**: Detailed node information in table format for cluster setups
+
+### 💻 Integrated CLI
+- Full Redis command support with syntax highlighting
+- Command history with up/down arrow navigation
+- Scrollable output with Page Up/Down support
+- Tab to switch focus between input and output areas
+
+### ⚙️ Configuration Management
+- **TLS/SSL Support**: Secure connections with certificate authentication
+- JSON-based configuration with environment variable support
+- Runtime configuration updates
+- Connection pooling and timeout management
+
+### 🎨 User Experience
 
 ## 🚀 Quick Start
 
@@ -107,24 +135,61 @@ Examples:
 
 ### Configuration
 
-Create `~/.redis-cli-dashboard/config.yaml`:
+Create `~/.redis-cli-dashboard/config.json`:
 
-```yaml
-redis:
-  host: "localhost"
-  port: 6379
-  password: ""
-  db: 0
-  timeout: 5000
-  pool_size: 10
-
-ui:
-  theme: "default"
-  refresh_interval: 1000
-  max_keys: 1000
-  show_memory: true
-  show_ttl: true
+```json
+{
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0,
+    "timeout": 5000,
+    "pool_size": 10,
+    "tls": {
+      "enabled": false,
+      "cert_file": "",
+      "key_file": "",
+      "ca_file": "",
+      "insecure_skip_verify": false
+    }
+  },
+  "ui": {
+    "theme": "default",
+    "refresh_interval": 1000,
+    "max_keys": 1000,
+    "show_memory": true,
+    "show_ttl": true
+  }
+}
 ```
+
+### TLS/SSL Configuration
+
+For secure Redis connections, enable TLS in your configuration:
+
+```json
+{
+  "redis": {
+    "host": "secure-redis.example.com",
+    "port": 6380,
+    "tls": {
+      "enabled": true,
+      "cert_file": "/path/to/client.crt",
+      "key_file": "/path/to/client.key", 
+      "ca_file": "/path/to/ca.crt",
+      "insecure_skip_verify": false
+    }
+  }
+}
+```
+
+**TLS Options:**
+- `enabled`: Enable/disable TLS connection
+- `cert_file`: Path to client certificate file (optional)
+- `key_file`: Path to client private key file (optional)
+- `ca_file`: Path to CA certificate file (optional)
+- `insecure_skip_verify`: Skip certificate verification (not recommended for production)
 
 ## 🎮 Navigation & Controls
 
@@ -148,26 +213,60 @@ ui:
 | `↑/↓` | Navigate keys |
 | `Enter` | View key details |
 | `/` | Focus filter input |
-| `c` | Focus command input |
 | `r` | Refresh key list |
 | `d` | Delete selected key |
 | `e` | Edit selected key |
 | `t` | Set/modify TTL |
+| `Mouse Click` | Select key (mouse interaction enabled) |
+
+**Filter Controls:**
+- `Ctrl+L` - Clear filter input
+- `Ctrl+C` - Clear filter and return to table
+- `ESC` - Return to table without clearing filter
+- **Mouse clicks** work properly on filtered results to select keys
+- **Arrow key navigation** works correctly after filtering
 
 ### CLI View
 | Key | Action |
 |-----|--------|
 | `Enter` | Execute command |
-| `↑/↓` | Navigate command history |
-| `Ctrl+L` | Clear screen |
-| `Tab` | Command completion (if available) |
+| `↑/↓` | Navigate command history (when input focused) / Scroll output (when output focused) |
+| `Tab` | Switch focus between input and output |
+| `Ctrl+L` | Clear output screen |
+| `PgUp/PgDn` | Scroll output by 10 lines (when output has focus) |
+| `Home/End` | Jump to beginning/end of output (when output has focus) |
+| `Mouse Scroll` | Scroll output with mouse wheel |
+
+**Focus Management:**
+- **Input field** is focused by default for command entry
+- **Arrow keys** navigate command history only when input is focused
+- Press `Tab` to switch focus to output area for scrolling
+- **Arrow keys** scroll output line by line when output is focused
+- **Page Up/Down, Home/End** work for navigation when output is focused
+- Mouse scrolling works in output area regardless of focus
 
 ### Monitor View
 | Key | Action |
 |-----|--------|
-| `s` | Start/stop monitoring |
+| `s` | Start/stop real-time monitoring |
 | `c` | Clear screen |
 | `r` | Refresh metrics |
+| `↑/↓` | Scroll through metrics (when monitoring stopped) |
+
+**Monitor Features:**
+- Real-time client connection tracking
+- Command statistics with hit/miss rates
+- Slow query log monitoring
+- Cluster nodes table with role and status
+- Memory usage with human-readable formatting
+
+**Important Notes:**
+- Number keys (1-6) work as navigation shortcuts only when not typing in input fields
+- Filter inputs correctly handle numbers without triggering view switches
+- CLI output scrolling works properly when output area has focus (use Tab to switch focus)
+- Mouse interaction is enabled for key selection in Keys view, including filtered results
+- Filter input can be cleared quickly with Ctrl+L or Ctrl+C shortcuts
+- Arrow key navigation works correctly in filtered key lists
 
 
 

@@ -2,7 +2,10 @@ package redis
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
@@ -20,11 +23,44 @@ type Client struct {
 
 // New creates a new Redis client
 func New(cfg *config.RedisConfig) (*Client, error) {
-	rdb := redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,
 		DB:       cfg.DB,
-	})
+	}
+
+	// Configure TLS if enabled
+	if cfg.TLS.Enabled {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
+		}
+
+		// Load client certificate if provided
+		if cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load client certificate: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+
+		// Load CA certificate if provided
+		if cfg.TLS.CAFile != "" {
+			caCert, err := ioutil.ReadFile(cfg.TLS.CAFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				return nil, fmt.Errorf("failed to parse CA certificate")
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		opts.TLSConfig = tlsConfig
+	}
+
+	rdb := redis.NewClient(opts)
 
 	ctx := context.Background()
 
@@ -66,6 +102,11 @@ func (c *Client) MemoryUsage(key string) (int64, error) {
 // ObjectEncoding returns the internal encoding of a key
 func (c *Client) ObjectEncoding(key string) (string, error) {
 	return c.rdb.ObjectEncoding(c.ctx, key).Result()
+}
+
+// DBSize returns the number of keys in the current database
+func (c *Client) DBSize() (int64, error) {
+	return c.rdb.DBSize(c.ctx).Result()
 }
 
 // GetKeys returns all keys matching the pattern
@@ -315,4 +356,9 @@ type Metrics struct {
 	KeyspaceMisses         int64
 	InstantaneousOpsPerSec int64
 	UptimeInSeconds        int64
+}
+
+// ClusterNodes returns cluster nodes information
+func (c *Client) ClusterNodes() (string, error) {
+	return c.rdb.ClusterNodes(c.ctx).Result()
 }

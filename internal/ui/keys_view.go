@@ -69,6 +69,31 @@ func (v *KeysView) setupUI() {
 		SetFixed(1, 0).
 		SetSelectable(true, false)
 
+	v.table.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		if action == tview.MouseLeftClick {
+			// Get the clicked position
+			_, y := event.Position()
+			// Convert screen coordinates to table coordinates
+			_, tableY, _, _ := v.table.GetInnerRect()
+			relY := y - tableY
+
+			// Calculate which row was clicked (accounting for header row)
+			clickedRow := relY + 1 // +1 because header is row 0
+
+			if clickedRow > 0 && clickedRow <= len(v.getDisplayKeys()) {
+				// Set the selection to the clicked row
+				v.table.Select(clickedRow, 0)
+
+				keyInfo := v.getDisplayKeys()[clickedRow-1]
+				if keyInfo != nil {
+					v.selectedKey = keyInfo.Name
+					v.showKeyDetails(keyInfo.Name)
+				}
+			}
+		}
+		return action, event
+	})
+
 	// Set up headers
 	headers := []string{"Type", "Key", "TTL", "Size", "Encoding"}
 	for i, header := range headers {
@@ -124,26 +149,23 @@ func (v *KeysView) setupUI() {
 			}
 		})
 
-	// Command input
-	v.commandInput = tview.NewInputField().
-		SetLabel("Command: ").
-		SetFieldWidth(0).
-		SetDoneFunc(func(key tcell.Key) {
-			if key == tcell.KeyEnter {
-				v.executeCommand(v.commandInput.GetText())
-				v.setFocus(0) // Return to table after command
-			} else if key == tcell.KeyEscape {
-				v.commandInput.SetText("")
-				v.setFocus(0) // Return to table on escape
-			}
-		})
-
-	// Command output
-	v.commandOutput = tview.NewTextView().
-		SetDynamicColors(true).
-		SetWrap(true).
-		SetScrollable(true)
-	v.commandOutput.SetText("Enter a Redis command above...")
+	v.filter.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Handle key events in filter input
+		switch event.Key() {
+		case tcell.KeyCtrlL:
+			// Clear filter input with Ctrl+L
+			v.filter.SetText("")
+			v.applyFilter("")
+			return nil
+		case tcell.KeyCtrlC:
+			// Clear filter and return to table with Ctrl+C
+			v.filter.SetText("")
+			v.applyFilter("")
+			v.setFocus(0)
+			return nil
+		}
+		return event
+	})
 
 	// Main layout
 	v.flex = tview.NewFlex().
@@ -160,11 +182,6 @@ func (v *KeysView) setupUI() {
 			switch event.Key() {
 			case tcell.KeyRune:
 				switch event.Rune() {
-				case 'c', 'C':
-					logger.Debug("[KeysView] 'c' key pressed, focusing command input")
-					// Focus on command input
-					v.setFocus(2)
-					return nil
 				case '/':
 					logger.Debug("[KeysView] '/' key pressed, focusing filter")
 					// Focus on filter (like vim search)
@@ -207,14 +224,6 @@ func (v *KeysView) setupUI() {
 // refreshLayout updates the view layout
 func (v *KeysView) refreshLayout() {
 	v.flex.Clear()
-
-	// Command input area at the top (bigger - 3 lines)
-	v.flex.AddItem(v.commandInput, 3, 0, false)
-
-	// Command output area (bigger for better visibility - 5 lines)
-	commandOutputWrapper := tview.NewFlex().SetDirection(tview.FlexColumn)
-	commandOutputWrapper.AddItem(v.commandOutput, 0, 1, false)
-	v.flex.AddItem(commandOutputWrapper, 5, 0, false)
 
 	// Main content area - left: keys table, right: value details
 	mainContent := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -553,11 +562,6 @@ func (v *KeysView) setFocus(index int) {
 		componentName = "filter"
 		v.table.SetSelectable(false, false)
 		focusComponent = v.filter
-	case 2:
-		// Focus on command input
-		componentName = "command input"
-		v.table.SetSelectable(false, false)
-		focusComponent = v.commandInput
 	default:
 		componentName = "table (default)"
 		focusComponent = v.table
@@ -591,8 +595,6 @@ func (v *KeysView) GetCurrentFocus() tview.Primitive {
 		return v.table
 	case 1:
 		return v.filter
-	case 2:
-		return v.commandInput
 	default:
 		return v.table
 	}
@@ -600,7 +602,7 @@ func (v *KeysView) GetCurrentFocus() tview.Primitive {
 
 // cycleFocus cycles through focusable components
 func (v *KeysView) cycleFocus() {
-	v.focusIndex = (v.focusIndex + 1) % 3
+	v.focusIndex = (v.focusIndex + 1) % 2
 	v.setFocus(v.focusIndex)
 }
 

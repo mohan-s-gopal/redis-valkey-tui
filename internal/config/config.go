@@ -15,12 +15,22 @@ type Config struct {
 
 // RedisConfig holds Redis connection configuration
 type RedisConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Password string `json:"password"`
-	DB       int    `json:"db"`
-	Timeout  int    `json:"timeout"`
-	PoolSize int    `json:"pool_size"`
+	Host     string    `json:"host"`
+	Port     int       `json:"port"`
+	Password string    `json:"password"`
+	DB       int       `json:"db"`
+	Timeout  int       `json:"timeout"`
+	PoolSize int       `json:"pool_size"`
+	TLS      TLSConfig `json:"tls"`
+}
+
+// TLSConfig holds TLS configuration
+type TLSConfig struct {
+	Enabled            bool   `json:"enabled"`
+	CertFile           string `json:"cert_file"`
+	KeyFile            string `json:"key_file"`
+	CAFile             string `json:"ca_file"`
+	InsecureSkipVerify bool   `json:"insecure_skip_verify"`
 }
 
 // UIConfig holds UI configuration
@@ -42,6 +52,13 @@ func Default() *Config {
 			DB:       0,
 			Timeout:  5000,
 			PoolSize: 10,
+			TLS: TLSConfig{
+				Enabled:            false,
+				CertFile:           "",
+				KeyFile:            "",
+				CAFile:             "",
+				InsecureSkipVerify: false,
+			},
 		},
 		UI: UIConfig{
 			Theme:           "default",

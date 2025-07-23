@@ -45,7 +45,7 @@ type App struct {
 	headerBar   *tview.Flex
 	contextBar  *tview.TextView
 	statusBar   *tview.TextView
-	commandBar  *tview.TextView
+	footerBar   *tview.TextView
 	metrics     *Metrics
 
 	// Help
@@ -212,12 +212,13 @@ func (a *App) setupUI() {
 		SetDynamicColors(true).
 		SetText("Ready")
 
-	// Create navigation command bar
-	a.commandBar = tview.NewTextView().
+	// Create footer with shortcuts
+	a.footerBar = tview.NewTextView().
 		SetDynamicColors(true).
-		SetText("[yellow]Navigation:[white] 1=Keys 2=Info 3=Monitor 4=CLI 5=Config 6=Help | [yellow]Shortcuts:[white] ESC=home c=command /=filter r=refresh ?=help Ctrl+C=quit")
-	a.commandBar.SetBorder(true).
-		SetTitle("Navigation & Shortcuts").
+		SetTextAlign(tview.AlignLeft).
+		SetText("[yellow]Navigation:[white] 1=Keys 2=Info 3=Monitor 4=CLI 5=Config 6=Help | [yellow]Global:[white] ESC=home r=refresh ?=help Ctrl+C=quit")
+	a.footerBar.SetBorder(true).
+		SetTitle("Shortcuts").
 		SetBorderPadding(0, 0, 1, 1)
 
 	// Create help modal
@@ -279,12 +280,12 @@ func (a *App) setupLayout() {
 	logger.Debug("Adding content pages to main layout")
 	mainLayout.AddItem(a.contentPages, 0, 1, true)
 
-	// Add command bar back for navigation shortcuts (fixed height of 3 lines)
-	if a.commandBar != nil {
-		logger.Debug("Adding command bar to layout")
-		mainLayout.AddItem(a.commandBar, 3, 0, false)
+	// Add footer with shortcuts (fixed height of 3 lines)
+	if a.footerBar != nil {
+		logger.Debug("Adding footer bar to layout")
+		mainLayout.AddItem(a.footerBar, 3, 0, false)
 	} else {
-		logger.Debug("No command bar to add")
+		logger.Debug("No footer bar to add")
 	}
 
 	// Set up the pages
@@ -456,15 +457,7 @@ func (a *App) switchView(view ViewType) {
 	a.currentView = view
 	logger.Tracef("[switchView] currentView set successfully to: %s", a.getViewName(a.currentView))
 
-	// Update command bar text based on current view
-	logger.Tracef("[switchView] Checking command bar: %p", a.commandBar)
-	if a.commandBar != nil {
-		logger.Debug("[switchView] Updating command bar for new view")
-		a.updateCommandBar()
-		logger.Tracef("[switchView] Command bar updated successfully")
-	} else {
-		logger.Warn("[switchView] Command bar is nil, skipping update")
-	}
+	// Command bar removed - no longer updating command bar text
 
 	// Check prerequisites for UI operations
 	logger.Tracef("[switchView] Checking UI operation prerequisites:")
@@ -625,56 +618,6 @@ func (a *App) getViewStatus() string {
 	}
 }
 
-// updateCommandBar updates the command bar based on current view
-func (a *App) updateCommandBar() {
-	logger.Tracef("[updateCommandBar] ENTRY: Updating command bar for view: %s", a.getViewName(a.currentView))
-
-	if a.commandBar == nil {
-		logger.Error("[updateCommandBar] Command bar is nil, cannot update")
-		return
-	}
-
-	logger.Tracef("[updateCommandBar] Command bar is valid: %p", a.commandBar)
-
-	baseText := "[yellow]Navigation:[white] 1=Keys 2=Info 3=Monitor 4=CLI 5=Config 6=Help | [yellow]Global:[white] ESC=home ?=help Ctrl+C=quit"
-	logger.Tracef("[updateCommandBar] Base text prepared")
-
-	var viewSpecific string
-	logger.Tracef("[updateCommandBar] Determining view-specific text for: %s", a.getViewName(a.currentView))
-
-	switch a.currentView {
-	case KeysViewType:
-		viewSpecific = " | [yellow]Keys:[white] c=command /=filter r=refresh"
-		logger.Tracef("[updateCommandBar] Set Keys view specific text")
-	case InfoViewType:
-		viewSpecific = " | [yellow]Info:[white] r=refresh"
-		logger.Tracef("[updateCommandBar] Set Info view specific text")
-	case MonitorViewType:
-		viewSpecific = " | [yellow]Monitor:[white] s=start/stop c=clear r=refresh"
-		logger.Tracef("[updateCommandBar] Set Monitor view specific text")
-	case CLIViewType:
-		viewSpecific = " | [yellow]CLI:[white] Enter=execute ↑↓=history Ctrl+L=clear"
-		logger.Tracef("[updateCommandBar] Set CLI view specific text")
-	case ConfigViewType:
-		viewSpecific = " | [yellow]Config:[white] s=save r=reset"
-		logger.Tracef("[updateCommandBar] Set Config view specific text")
-	case HelpViewType:
-		viewSpecific = " | [yellow]Help:[white] Navigate with arrow keys"
-		logger.Tracef("[updateCommandBar] Set Help view specific text")
-	default:
-		logger.Warnf("[updateCommandBar] Unknown view type: %d, using empty view-specific text", a.currentView)
-		viewSpecific = ""
-	}
-
-	finalText := baseText + viewSpecific
-	logger.Tracef("[updateCommandBar] Final text prepared (length: %d chars)", len(finalText))
-
-	a.commandBar.SetText(finalText)
-	logger.Tracef("[updateCommandBar] Command bar text set successfully")
-
-	logger.Tracef("[updateCommandBar] EXIT: Command bar updated for view: %s", a.getViewName(a.currentView))
-}
-
 // handleGlobalKeys handles global key bindings
 func (a *App) handleGlobalKeys(event *tcell.EventKey) *tcell.EventKey {
 	logger.Tracef("Global key handler received event: Key=%v, Rune=%c, Mod=%v",
@@ -697,7 +640,14 @@ func (a *App) handleGlobalKeys(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	}
 
-	// Handle number keys for quick view switching
+	// Handle number keys for quick view switching only if no input field has focus
+	currentFocus := a.app.GetFocus()
+
+	// Check if current focus is an InputField - if so, let numbers pass through
+	if _, isInputField := currentFocus.(*tview.InputField); isInputField {
+		return event // Pass through to input field
+	}
+
 	switch event.Rune() {
 	case '1':
 		logger.Debug("Number key '1' pressed, switching to Keys view")

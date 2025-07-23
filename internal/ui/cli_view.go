@@ -57,6 +57,50 @@ func (v *CLIView) setupUI() {
 		SetScrollable(true).
 		SetWordWrap(true)
 
+	v.output.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		// Enable mouse scrolling in output area
+		if action == tview.MouseScrollUp {
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row-3, 0)
+			return action, event
+		} else if action == tview.MouseScrollDown {
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row+3, 0)
+			return action, event
+		}
+		return action, event
+	})
+
+	v.output.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyPgUp:
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row-10, 0)
+			return nil
+		case tcell.KeyPgDn:
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row+10, 0)
+			return nil
+		case tcell.KeyHome:
+			v.output.ScrollToBeginning()
+			return nil
+		case tcell.KeyEnd:
+			v.output.ScrollToEnd()
+			return nil
+		case tcell.KeyUp:
+			// Scroll up by 1 line with arrow keys
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row-1, 0)
+			return nil
+		case tcell.KeyDown:
+			// Scroll down by 1 line with arrow keys
+			row, _ := v.output.GetScrollOffset()
+			v.output.ScrollTo(row+1, 0)
+			return nil
+		}
+		return event
+	})
+
 	v.output.SetBorder(true).
 		SetTitle("Output").
 		SetBorderPadding(0, 0, 1, 1)
@@ -67,11 +111,48 @@ func (v *CLIView) setupUI() {
 		AddItem(v.output, 0, 1, false).
 		AddItem(v.input, 3, 0, true)
 
+	// Make output focusable
+	v.output.SetFocusFunc(func() {
+		v.output.SetBorderColor(tcell.ColorBlue)
+		v.output.SetTitleColor(tcell.ColorBlue)
+	})
+
+	v.output.SetBlurFunc(func() {
+		v.output.SetBorderColor(tcell.ColorWhite)
+		v.output.SetTitleColor(tcell.ColorWhite)
+	})
+
 	// Set up input capture on the main flex to handle global keys
 	v.flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Only handle global keys when input doesn't have focus
-		// If input has focus, let it handle its own keys
-		return event // Pass through all keys to global handler
+		switch event.Key() {
+		case tcell.KeyTab:
+			// Switch focus between input and output
+			if v.input.HasFocus() {
+				v.output.Focus(nil)
+				return nil
+			} else {
+				v.input.Focus(nil)
+				return nil
+			}
+		case tcell.KeyCtrlL:
+			// Clear output from anywhere in CLI view
+			v.clearOutput()
+			return nil
+		case tcell.KeyUp, tcell.KeyDown:
+			// If output has focus, let it handle arrow keys for scrolling
+			if v.output.HasFocus() {
+				return event // Pass through to output's input capture
+			}
+			// Otherwise, let input handle it for history navigation
+			return event
+		case tcell.KeyPgUp, tcell.KeyPgDn, tcell.KeyHome, tcell.KeyEnd:
+			// Always pass page/home/end keys to output if it has focus
+			if v.output.HasFocus() {
+				return event
+			}
+		}
+		// Pass through all other keys to global handler
+		return event
 	})
 }
 
@@ -82,13 +163,23 @@ func (v *CLIView) GetComponent() tview.Primitive {
 
 // handleInput handles input for navigation and special keys
 func (v *CLIView) handleInput(event *tcell.EventKey) *tcell.EventKey {
+	// Only handle history navigation if input field is focused
+	// This allows arrow keys to work for scrolling when output is focused
 	switch event.Key() {
 	case tcell.KeyUp:
-		v.navigateHistory(-1)
-		return nil
+		if v.input.HasFocus() {
+			v.navigateHistory(-1)
+			return nil
+		}
+		// Let it pass through if output has focus
+		return event
 	case tcell.KeyDown:
-		v.navigateHistory(1)
-		return nil
+		if v.input.HasFocus() {
+			v.navigateHistory(1)
+			return nil
+		}
+		// Let it pass through if output has focus
+		return event
 	case tcell.KeyCtrlL:
 		v.clearOutput()
 		return nil

@@ -1,12 +1,24 @@
 {
   "redis": {
     "host": "localhost",
-    "port": 6379,
+    "port": 6380,
     "password": "",
-    "db": 0
+    "db": 0,
+    "timeout": 5000,
+    "pool_size": 10,
+    "tls": {
+      "enabled": true,
+      "cert_file": "/path/to/client.crt",
+      "key_file": "/path/to/client.key",
+      "ca_file": "/path/to/ca.crt",
+      "insecure_skip_verify": false
+    }
   },
   "ui": {
-    "theme": "dark",
-    "refresh_ms": 1000
+    "theme": "default",
+    "refresh_interval": 1000,
+    "max_keys": 1000,
+    "show_memory": true,
+    "show_ttl": true
   }
 }

@@ -61,13 +61,43 @@ func (a *App) formatHeaderText() string {
 		return "[red]Disconnected from Redis"
 	}
 
-	// Get key count from dbsize command
+	// Get key count using DBSIZE command (more accurate than parsing INFO)
 	keyCount := 0
-	if dbSize, ok := info["db0_keys"].(int64); ok {
+	if dbSize, err := a.redis.DBSize(); err == nil {
 		keyCount = int(dbSize)
 	}
 
-	// Parse metrics from info
+	// Parse Redis version
+	redisVersion, _ := info["redis_version"].(string)
+	if redisVersion == "" {
+		redisVersion = "unknown"
+	}
+
+	// Parse eviction policy
+	evictionPolicy, _ := info["maxmemory_policy"].(string)
+	if evictionPolicy == "" {
+		evictionPolicy = "noeviction"
+	}
+
+	// Parse server state/role
+	redisMode, _ := info["redis_mode"].(string)
+	if redisMode == "" {
+		redisMode = "standalone"
+	}
+
+	// Get role information for more detailed state
+	redisRole, _ := info["role"].(string)
+	if redisRole == "" {
+		redisRole = "master"
+	}
+
+	// Combine mode and role for comprehensive state
+	redisState := fmt.Sprintf("%s-%s", redisMode, redisRole)
+	if redisMode == "standalone" {
+		redisState = redisRole // Just show role for standalone
+	}
+
+	// Parse other metrics from info
 	usedMemory, _ := info["used_memory"].(int64)
 	connectedClients, _ := info["connected_clients"].(int64)
 	uptimeSeconds, _ := info["uptime_in_seconds"].(int64)
@@ -75,9 +105,12 @@ func (a *App) formatHeaderText() string {
 	memory := humanize.Bytes(uint64(usedMemory))
 	uptime := utils.FormatUptime(uptimeSeconds)
 
-	return fmt.Sprintf(" redis-tview │ DB: db%d │ Keys: %d │ Memory: %s │ Clients: %d │ Uptime: %s │ [dim]1-6: Views │ ?: Help[white] ",
+	return fmt.Sprintf(" redis-dashboard │ DB: db%d │ Keys: %d │ Version: %s │ State: %s │ Eviction: %s │ Memory: %s │ Clients: %d │ Uptime: %s │ [dim]1-6: Views │ ?: Help[white] ",
 		a.config.Redis.DB,
 		keyCount,
+		redisVersion,
+		redisState,
+		evictionPolicy,
 		memory,
 		connectedClients,
 		uptime)
