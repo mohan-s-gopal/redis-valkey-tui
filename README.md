@@ -7,7 +7,7 @@
 A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built with Go. Provides an intuitive, keyboard-driven interface for Redis database management with real-time monitoring, advanced key management, and built-in CLI functionality.
 
 <!-- Demo GIF - replace with actual recording -->
-![Redis CLI Dashboard Demo](assets/demo.png)
+![Redis CLI Dashboard Demo](assets/demo2.png)
 
 ## 🌟 Features
 
