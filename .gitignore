@@ -32,6 +32,7 @@ go.work.sum
 # .vscode/
 
 redis-valkey-tui
-redis-valkey-tui
+redis-cli-dashboard
+test_*.go
 # Added by goreleaser init:
 dist/

@@ -21,6 +21,13 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Verify clean workspace
+        run: |
+          if ls test_*.go 2>/dev/null; then
+            echo "Found stray test files that could cause build issues"
+            exit 1
+          fi
+
       - name: Run tests
         run: go test -v ./...
 
