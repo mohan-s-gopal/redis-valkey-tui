@@ -31,6 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 
-redis-cli-dashboard
+redis-valkey-tui
+redis-valkey-tui
 # Added by goreleaser init:
 dist/

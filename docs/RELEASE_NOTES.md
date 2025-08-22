@@ -98,7 +98,7 @@ docker run -it redis-cli-dashboard
 ```
 
 #### Configuration
-Create `~/.redis-cli-dashboard/config.json`:
+Create `~/.redis-valkey-tui/config.json`:
 ```json
 {
   "host": "localhost",

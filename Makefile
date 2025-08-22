@@ -1,18 +1,32 @@
-# Makefile for redis-cli-dashboard
+# Makefile for redis-valkey-tui
 
-.PHONY: build run clean test install deps
+VERSION ?= dev
+BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+LDFLAGS = -X github.com/mohan-s-gopal/redis-valkey-tui/cmd.Version=$(VERSION) \
+          -X github.com/mohan-s-gopal/redis-valkey-tui/cmd.BuildTime=$(BUILD_TIME) \
+          -X github.com/mohan-s-gopal/redis-valkey-tui/cmd.GitCommit=$(GIT_COMMIT)
+
+.PHONY: build run clean test install deps version build-all fmt mod tidy
 
 # Build the application
 build:
-	go build -o redis-cli-dashboard .
+	go build -ldflags "$(LDFLAGS)" -o redis-valkey-tui .
 
 # Run the application
 run:
 	go run .
 
+# Show version information
+version:
+	@echo "Version: $(VERSION)"
+	@echo "Build time: $(BUILD_TIME)"
+	@echo "Git commit: $(GIT_COMMIT)"
+
 # Clean build artifacts
 clean:
-	rm -f redis-cli-dashboard
+	rm -f redis-valkey-tui
 
 # Run tests
 test:
@@ -30,10 +44,10 @@ install:
 
 # Build for multiple platforms
 build-all:
-	GOOS=linux GOARCH=amd64 go build -o redis-cli-dashboard-linux-amd64 .
-	GOOS=darwin GOARCH=amd64 go build -o redis-cli-dashboard-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o redis-cli-dashboard-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build -o redis-cli-dashboard-windows-amd64.exe .
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o redis-valkey-tui-linux-amd64 .
+	GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o redis-valkey-tui-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o redis-valkey-tui-darwin-arm64 .
+	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o redis-valkey-tui-windows-amd64.exe .
 
 # Format code
 fmt:

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"redis-cli-dashboard/cmd"
+	"github.com/mohan-s-gopal/redis-valkey-tui/cmd"
 )
 
 func main() {

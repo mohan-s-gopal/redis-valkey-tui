@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/utils"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/utils"
 
 	"github.com/dustin/go-humanize"
 	"github.com/rivo/tview"

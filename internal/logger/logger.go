@@ -42,7 +42,7 @@ func InitWithLevel(level LogLevel, console bool) error {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	logDir := filepath.Join(home, ".redis-cli-dashboard", "logs")
+	logDir := filepath.Join(home, ".redis-valkey-tui", "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}

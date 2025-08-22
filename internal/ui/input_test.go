@@ -4,8 +4,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
 	"testing"
 )
 

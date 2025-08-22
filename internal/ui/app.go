@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/redis"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/redis"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -770,7 +770,7 @@ func (a *App) cleanup() {
 
 // getHelpText returns the help text
 func (a *App) getHelpText() string {
-	return `redis-cli-dashboard Help
+	return `redis-valkey-tui Help
 
 Quick Navigation:
   1           Switch to Keys view

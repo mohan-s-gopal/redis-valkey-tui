@@ -25,10 +25,10 @@ jobs:
         run: go test -v ./...
 
       - name: Build
-        run: go build -o redis-cli-dashboard .
+        run: go build -o redis-valkey-tui .
 
       - name: Test build
-        run: ./redis-cli-dashboard -help
+        run: ./redis-valkey-tui -help
 
   build:
     runs-on: ubuntu-latest

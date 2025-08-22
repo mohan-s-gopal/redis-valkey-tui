@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"redis-cli-dashboard/internal/redis"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/redis"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"

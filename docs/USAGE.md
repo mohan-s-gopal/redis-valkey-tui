@@ -1,4 +1,4 @@
-# redis-cli-dashboard Usage Guide
+# redis-valkey-tui Usage Guide
 
 ## Quick Start
 
@@ -9,12 +9,12 @@
 
 2. **Run with default settings:**
    ```bash
-   ./redis-cli-dashboard
+   ./redis-valkey-tui
    ```
 
 3. **Run with custom Redis connection:**
    ```bash
-   ./redis-cli-dashboard -host redis.example.com -port 6380 -password mypassword
+   ./redis-valkey-tui -host redis.example.com -port 6380 -password mypassword
    ```
 
 ## Command Line Options
@@ -27,7 +27,7 @@
 
 ## Configuration File
 
-redis-cli-dashboard will look for a configuration file at `~/.redis-cli-dashboard/config.json`. Example:
+redis-valkey-tui will look for a configuration file at `~/.redis-valkey-tui/config.json`. Example:
 
 ```json
 {
@@ -48,7 +48,7 @@ Command line options override config file values.
 
 ## Application Modes
 
-redis-cli-dashboard features multiple modes for different tasks:
+redis-valkey-tui features multiple modes for different tasks:
 
 ### 1. Key Browser Mode (Default)
 - **Purpose**: Browse, search, and manage Redis keys
@@ -97,7 +97,7 @@ redis-cli-dashboard features multiple modes for different tasks:
 ## Navigation
 
 ### Main Menu
-When you start redis-cli-dashboard, you'll see the main menu with 5 options:
+When you start redis-valkey-tui, you'll see the main menu with 5 options:
 - Use `↑/↓` to navigate
 - Press `Enter` to select
 - Press `q` to quit
@@ -256,17 +256,17 @@ When you start redis-cli-dashboard, you'll see the main menu with 5 options:
 ### Basic Usage
 ```bash
 # Connect to local Redis
-./redis-cli-dashboard
+./redis-valkey-tui
 
 # Connect to remote Redis with authentication
-./redis-cli-dashboard -host redis.example.com -port 6380 -password secret123
+./redis-valkey-tui -host redis.example.com -port 6380 -password secret123
 
 # Connect to specific database
-./redis-cli-dashboard -db 2
+./redis-valkey-tui -db 2
 ```
 
 ### Using Configuration File
-Create `~/.redis-cli-dashboard/config.json`:
+Create `~/.redis-valkey-tui/config.json`:
 ```json
 {
   "redis": {
@@ -280,16 +280,16 @@ Create `~/.redis-cli-dashboard/config.json`:
 
 Then simply run:
 ```bash
-./redis-cli-dashboard
+./redis-valkey-tui
 ```
 
 ### Overriding Configuration
 ```bash
 # Use config file but override the database
-./redis-cli-dashboard -db 3
+./redis-valkey-tui -db 3
 
 # Use config file but override the host
-./redis-cli-dashboard -host localhost
+./redis-valkey-tui -host localhost
 ```
 
 ## Troubleshooting

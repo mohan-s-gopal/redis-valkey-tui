@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/redis"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/redis"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gdamore/tcell/v2"
@@ -271,20 +271,59 @@ func (v *KeysView) GetFilter() string {
 
 // loadKeys loads and displays Redis keys
 func (v *KeysView) loadKeys() {
+	logger.Logger.Println("[KeysView] Starting to load keys...")
+	
 	keys, err := v.redis.GetKeys("*")
 	if err != nil {
+		logger.Logger.Printf("[KeysView] Error getting keys: %v", err)
+		// Show error in the table
+		v.showError(fmt.Sprintf("Error loading keys: %v", err))
 		return
 	}
 
-	v.keys = make([]*redis.KeyInfo, 0, len(keys))
-	for _, key := range keys {
-		info, err := v.redis.GetKeyInfo(key)
-		if err != nil {
-			continue
-		}
-		v.keys = append(v.keys, info)
+	logger.Logger.Printf("[KeysView] Found %d keys, loading details...", len(keys))
+	
+	// Limit the number of keys to process to avoid long waits
+	maxKeys := 1000
+	if len(keys) > maxKeys {
+		logger.Logger.Printf("[KeysView] Too many keys (%d), limiting to first %d keys", len(keys), maxKeys)
+		keys = keys[:maxKeys]
 	}
 
+	v.keys = make([]*redis.KeyInfo, 0, len(keys))
+	
+	// Process keys in batches to show progress
+	batchSize := 50
+	for i := 0; i < len(keys); i += batchSize {
+		end := i + batchSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		
+		for j := i; j < end; j++ {
+			key := keys[j]
+			info, err := v.redis.GetKeyInfo(key)
+			if err != nil {
+				logger.Logger.Printf("[KeysView] Error getting info for key %s: %v", key, err)
+				// Create a basic key info even if we can't get all details
+				info = &redis.KeyInfo{
+					Key:  key,
+					Name: key,
+					Type: "unknown",
+				}
+			}
+			v.keys = append(v.keys, info)
+		}
+		
+		// Update UI after each batch for progress feedback
+		if i%100 == 0 || end == len(keys) {
+			logger.Logger.Printf("[KeysView] Processed %d/%d keys", end, len(keys))
+			// Update UI synchronously to show progress
+			v.refreshKeys()
+		}
+	}
+
+	logger.Logger.Printf("[KeysView] Finished loading %d keys", len(v.keys))
 	v.refreshKeys()
 }
 
@@ -293,8 +332,8 @@ func (v *KeysView) refreshKeys() {
 	// Clear existing rows
 	v.table.Clear()
 
-	// Set headers
-	headers := []string{"Type", "Key", "TTL", "Size", "Encoding"}
+	// Set headers (removed Encoding column)
+	headers := []string{"Type", "Key", "TTL", "Size"}
 	for i, header := range headers {
 		v.table.SetCell(0, i,
 			tview.NewTableCell(header).
@@ -305,11 +344,20 @@ func (v *KeysView) refreshKeys() {
 
 	// Add key rows
 	displayKeys := v.getDisplayKeys()
+	
+	if len(displayKeys) == 0 {
+		// Show a message when no keys are found
+		v.table.SetCell(1, 0, tview.NewTableCell("No keys found"))
+		v.table.SetCell(1, 1, tview.NewTableCell(""))
+		v.table.SetCell(1, 2, tview.NewTableCell(""))
+		v.table.SetCell(1, 3, tview.NewTableCell(""))
+		return
+	}
 
 	for i, key := range displayKeys {
 		row := i + 1
 
-		// Type column without icon
+		// Type column
 		v.table.SetCell(row, 0, tview.NewTableCell(key.Type))
 
 		// Key name
@@ -319,14 +367,19 @@ func (v *KeysView) refreshKeys() {
 		ttl := "-"
 		if key.TTL > 0 {
 			ttl = fmt.Sprintf("%ds", int64(key.TTL.Seconds()))
+		} else if key.TTL == -1 {
+			ttl = "persistent"
 		}
 		v.table.SetCell(row, 2, tview.NewTableCell(ttl))
 
 		// Size
-		v.table.SetCell(row, 3, tview.NewTableCell(humanize.Bytes(uint64(key.MemoryUsage))))
-
-		// Encoding
-		v.table.SetCell(row, 4, tview.NewTableCell(key.Encoding))
+		sizeStr := "-"
+		if key.MemoryUsage > 0 {
+			sizeStr = humanize.Bytes(uint64(key.MemoryUsage))
+		} else if key.Size > 0 {
+			sizeStr = humanize.Bytes(uint64(key.Size))
+		}
+		v.table.SetCell(row, 3, tview.NewTableCell(sizeStr))
 	}
 
 	// Select first row if we have data
@@ -617,4 +670,28 @@ func (v *KeysView) getDisplayKeys() []*redis.KeyInfo {
 // Refresh reloads the keys from Redis
 func (v *KeysView) Refresh() {
 	v.loadKeys()
+}
+
+// showError displays an error message in the table
+func (v *KeysView) showError(message string) {
+	v.table.Clear()
+	
+	// Set headers
+	headers := []string{"Type", "Key", "TTL", "Size"}
+	for i, header := range headers {
+		v.table.SetCell(0, i,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+	}
+	
+	// Show error message
+	v.table.SetCell(1, 0, tview.NewTableCell("ERROR").SetTextColor(tcell.ColorRed))
+	v.table.SetCell(1, 1, tview.NewTableCell(message).SetTextColor(tcell.ColorRed))
+	v.table.SetCell(1, 2, tview.NewTableCell(""))
+	v.table.SetCell(1, 3, tview.NewTableCell(""))
+	
+	// Show error in key details as well
+	v.keyDetail.SetText(fmt.Sprintf("[red]Error:[white] %s", message))
 }

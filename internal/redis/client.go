@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"redis-cli-dashboard/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -109,15 +109,36 @@ func (c *Client) DBSize() (int64, error) {
 	return c.rdb.DBSize(c.ctx).Result()
 }
 
-// GetKeys returns all keys matching the pattern
+// GetKeys returns all keys matching the pattern using SCAN for safety
 func (c *Client) GetKeys(pattern string) ([]string, error) {
 	if pattern == "" {
 		pattern = "*"
 	}
 
-	keys, err := c.rdb.Keys(c.ctx, pattern).Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get keys: %w", err)
+	var keys []string
+	var cursor uint64
+	
+	// Use SCAN instead of KEYS for better performance and cluster compatibility
+	for {
+		var scanKeys []string
+		var err error
+		
+		scanKeys, cursor, err = c.rdb.Scan(c.ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan keys: %w", err)
+		}
+		
+		keys = append(keys, scanKeys...)
+		
+		// Break when cursor returns to 0 (full scan complete)
+		if cursor == 0 {
+			break
+		}
+		
+		// Safety check to prevent infinite loops
+		if len(keys) > 10000 {
+			break
+		}
 	}
 
 	return keys, nil
@@ -128,34 +149,35 @@ func (c *Client) GetKeyInfo(key string) (*KeyInfo, error) {
 	info := &KeyInfo{
 		Key:  key,
 		Name: key,
+		Type: "unknown", // Default fallback
+		TTL:  -1,        // Default to no expiry
 	}
 
-	// Get key type
+	// Get key type - this is critical, so return error if it fails
 	keyType, err := c.rdb.Type(c.ctx, key).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get key type: %w", err)
+		return nil, fmt.Errorf("failed to get key type for %s: %w", key, err)
 	}
 	info.Type = keyType
 
-	// Get TTL
+	// Get TTL - don't fail if this doesn't work
 	ttl, err := c.rdb.TTL(c.ctx, key).Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TTL: %w", err)
+	if err == nil {
+		info.TTL = ttl
 	}
-	info.TTL = ttl
 
-	// Get memory usage (if supported)
+	// Get memory usage (if supported) - don't fail if this doesn't work
 	memUsage, err := c.rdb.MemoryUsage(c.ctx, key).Result()
 	if err == nil {
 		info.MemoryUsage = memUsage
 		info.Size = memUsage // Set Size to match MemoryUsage
+	} else {
+		// Try to get approximate size based on key type
+		info.Size = c.getApproximateSize(key, keyType)
 	}
 
-	// Get encoding
-	encoding, err := c.rdb.ObjectEncoding(c.ctx, key).Result()
-	if err == nil {
-		info.Encoding = encoding
-	}
+	// Skip encoding for now since we removed it from UI
+	// and it can cause issues in some Redis configurations
 
 	return info, nil
 }
@@ -358,7 +380,183 @@ type Metrics struct {
 	UptimeInSeconds        int64
 }
 
+// getApproximateSize tries to get an approximate size for a key when MemoryUsage fails
+func (c *Client) getApproximateSize(key, keyType string) int64 {
+	switch keyType {
+	case "string":
+		if val, err := c.rdb.Get(c.ctx, key).Result(); err == nil {
+			return int64(len(val))
+		}
+	case "list":
+		if length, err := c.rdb.LLen(c.ctx, key).Result(); err == nil {
+			return length * 50 // Rough estimate
+		}
+	case "set":
+		if length, err := c.rdb.SCard(c.ctx, key).Result(); err == nil {
+			return length * 50 // Rough estimate
+		}
+	case "hash":
+		if length, err := c.rdb.HLen(c.ctx, key).Result(); err == nil {
+			return length * 100 // Rough estimate
+		}
+	case "zset":
+		if length, err := c.rdb.ZCard(c.ctx, key).Result(); err == nil {
+			return length * 100 // Rough estimate
+		}
+	}
+	return 0 // Unknown
+}
+
 // ClusterNodes returns cluster nodes information
 func (c *Client) ClusterNodes() (string, error) {
 	return c.rdb.ClusterNodes(c.ctx).Result()
+}
+
+// CommandStat represents statistics for a single Redis command
+type CommandStat struct {
+	Command        string
+	Calls          int64
+	TotalDuration  float64 // in milliseconds
+	DurationPerCall float64 // in milliseconds
+	RejectedCalls  int64
+	FailedCalls    int64
+}
+
+// GetCommandStats returns command statistics from Redis INFO commandstats
+func (c *Client) GetCommandStats() ([]CommandStat, error) {
+	info, err := c.rdb.Info(c.ctx, "commandstats").Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get command stats: %w", err)
+	}
+
+	var stats []CommandStat
+	lines := strings.Split(info, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "cmdstat_") {
+			continue
+		}
+
+		// Parse line like: cmdstat_info:calls=90,usec=100900,usec_per_call=1.12,rejected_calls=0,failed_calls=0
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		command := strings.TrimPrefix(parts[0], "cmdstat_")
+		values := parts[1]
+
+		stat := CommandStat{Command: command}
+
+		// Parse key=value pairs
+		pairs := strings.Split(values, ",")
+		for _, pair := range pairs {
+			kv := strings.SplitN(pair, "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+
+			key, value := kv[0], kv[1]
+			
+			switch key {
+			case "calls":
+				if val, err := strconv.ParseInt(value, 10, 64); err == nil {
+					stat.Calls = val
+				}
+			case "usec":
+				if val, err := strconv.ParseFloat(value, 64); err == nil {
+					stat.TotalDuration = val / 1000.0 // Convert microseconds to milliseconds
+				}
+			case "usec_per_call":
+				if val, err := strconv.ParseFloat(value, 64); err == nil {
+					stat.DurationPerCall = val / 1000.0 // Convert microseconds to milliseconds
+				}
+			case "rejected_calls":
+				if val, err := strconv.ParseInt(value, 10, 64); err == nil {
+					stat.RejectedCalls = val
+				}
+			case "failed_calls":
+				if val, err := strconv.ParseInt(value, 10, 64); err == nil {
+					stat.FailedCalls = val
+				}
+			}
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats, nil
+}
+
+// ClientInfo represents information about a connected client
+type ClientInfo struct {
+	ID            string
+	Address       string
+	Age           int64  // Connection age in seconds
+	Idle          int64  // Idle time in seconds
+	LastCommand   string
+	DB            int
+	Name          string
+	TotalDuration float64 // Calculated from age
+}
+
+// GetClientList returns information about connected clients
+func (c *Client) GetClientList() ([]ClientInfo, error) {
+	result, err := c.rdb.ClientList(c.ctx).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client list: %w", err)
+	}
+
+	var clients []ClientInfo
+	lines := strings.Split(result, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		client := ClientInfo{}
+		
+		// Parse client info line with key=value pairs
+		pairs := strings.Split(line, " ")
+		for _, pair := range pairs {
+			kv := strings.SplitN(pair, "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+
+			key, value := kv[0], kv[1]
+			
+			switch key {
+			case "id":
+				client.ID = value
+			case "addr":
+				client.Address = value
+			case "age":
+				if val, err := strconv.ParseInt(value, 10, 64); err == nil {
+					client.Age = val
+					// Calculate total duration in minutes from age
+					client.TotalDuration = float64(val) / 60.0
+				}
+			case "idle":
+				if val, err := strconv.ParseInt(value, 10, 64); err == nil {
+					client.Idle = val
+				}
+			case "cmd":
+				client.LastCommand = value
+			case "db":
+				if val, err := strconv.Atoi(value); err == nil {
+					client.DB = val
+				}
+			case "name":
+				client.Name = value
+			}
+		}
+
+		clients = append(clients, client)
+	}
+
+	return clients, nil
 }

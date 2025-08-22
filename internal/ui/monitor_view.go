@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/redis"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/redis"
 	"strings"
 	"time"
 
@@ -15,24 +15,38 @@ import (
 // MonitorView represents the monitoring view
 type MonitorView struct {
 	redis     *redis.Client
-	component *tview.TextView
+	
+	// UI Components
+	flex          *tview.Flex
+	statsTable    *tview.Table
+	commandTable  *tview.Table
+	clientTable   *tview.Table
+	infoText      *tview.TextView
 
 	// Monitoring state
-	monitoring bool
-	ticker     *time.Ticker
-	stopChan   chan bool
+	monitoring    bool
+	ticker        *time.Ticker
+	stopChan      chan bool
+	refreshRate   time.Duration
+	refreshIndex  int // Index for cycling through refresh rates
 }
 
 // NewMonitorView creates a new monitor view
 func NewMonitorView(redisClient *redis.Client) *MonitorView {
 	logger.Logger.Println("Initializing MonitorView...")
 	view := &MonitorView{
-		redis:    redisClient,
-		stopChan: make(chan bool),
+		redis:        redisClient,
+		stopChan:     make(chan bool),
+		refreshRate:  2 * time.Second, // Default 2 seconds like top
+		refreshIndex: 1,               // Start with 2 seconds
 	}
 
 	view.setupUI()
-	view.loadMetrics()
+	view.loadData()
+	
+	// Start monitoring automatically like top/htop
+	view.startMonitoring()
+	
 	logger.Logger.Println("MonitorView initialized")
 
 	return view
@@ -40,21 +54,79 @@ func NewMonitorView(redisClient *redis.Client) *MonitorView {
 
 // setupUI initializes the UI components
 func (v *MonitorView) setupUI() {
-	v.component = tview.NewTextView().
+	// Create command statistics table
+	v.commandTable = tview.NewTable()
+	v.commandTable.SetBorder(true).
+		SetTitle("Command Statistics").
+		SetTitleAlign(tview.AlignLeft)
+	v.commandTable.SetSelectable(true, false)
+	
+	// Set command table headers
+	headers := []string{"Command", "Number of calls", "Total Duration ↓", "Duration per call", "RejectedCalls", "FailedCalls", "CallsMaster"}
+	for i, header := range headers {
+		cell := tview.NewTableCell(header).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignLeft).
+			SetSelectable(false)
+		v.commandTable.SetCell(0, i, cell)
+	}
+
+	// Create client connections table
+	v.clientTable = tview.NewTable()
+	v.clientTable.SetBorder(true).
+		SetTitle("Client connections").
+		SetTitleAlign(tview.AlignLeft)
+	v.clientTable.SetSelectable(true, false)
+	
+	// Set client table headers
+	clientHeaders := []string{"Client", "Total duration", "Idle time ↓", "Last command"}
+	for i, header := range clientHeaders {
+		cell := tview.NewTableCell(header).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignLeft).
+			SetSelectable(false)
+		v.clientTable.SetCell(0, i, cell)
+	}
+
+	// Create server statistics table
+	v.statsTable = tview.NewTable()
+	v.statsTable.SetBorder(true).
+		SetTitle("Server Statistics").
+		SetTitleAlign(tview.AlignLeft)
+	v.statsTable.SetSelectable(false, false)
+
+	// Create info text view for additional details
+	v.infoText = tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
 		SetWordWrap(true)
+	v.infoText.SetBorder(true).
+		SetTitle("System Information").
+		SetTitleAlign(tview.AlignLeft)
 
-	v.component.SetInputCapture(v.handleInput)
+	// Create main layout with vertical arrangement
+	v.flex = tview.NewFlex().SetDirection(tview.FlexRow)
+	
+	// Top section: Command table
+	v.flex.AddItem(v.commandTable, 0, 2, true)
+	
+	// Middle section: Client connections table
+	v.flex.AddItem(v.clientTable, 0, 2, false)
+	
+	// Bottom section: Server stats and system info side by side
+	bottomFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
+	bottomFlex.AddItem(v.statsTable, 0, 1, false)
+	bottomFlex.AddItem(v.infoText, 0, 1, false)
+	
+	v.flex.AddItem(bottomFlex, 0, 1, false)
 
-	v.component.SetBorder(true).
-		SetTitle("Real-time Monitoring").
-		SetBorderPadding(0, 0, 1, 1)
+	// Set input capture for the main flex
+	v.flex.SetInputCapture(v.handleInput)
 }
 
 // GetComponent returns the main component
 func (v *MonitorView) GetComponent() tview.Primitive {
-	return v.component
+	return v.flex
 }
 
 // handleInput handles input for the monitor view
@@ -68,6 +140,10 @@ func (v *MonitorView) handleInput(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case 'r', 'R':
 		v.Refresh()
+		return nil
+	case 'd', 'D':
+		// Change refresh delay like in htop
+		v.cycleRefreshRate()
 		return nil
 	}
 
@@ -91,13 +167,13 @@ func (v *MonitorView) startMonitoring() {
 	}
 
 	v.monitoring = true
-	v.ticker = time.NewTicker(1 * time.Second)
+	v.ticker = time.NewTicker(v.refreshRate)
 
 	go func() {
 		for {
 			select {
 			case <-v.ticker.C:
-				v.loadMetrics()
+				v.loadData()
 			case <-v.stopChan:
 				return
 			}
@@ -122,156 +198,302 @@ func (v *MonitorView) stopMonitoring() {
 	v.updateTitle()
 }
 
+// cycleRefreshRate cycles through different refresh rates like htop
+func (v *MonitorView) cycleRefreshRate() {
+	refreshRates := []time.Duration{
+		1 * time.Second,  // Fast
+		2 * time.Second,  // Normal
+		5 * time.Second,  // Slow
+		10 * time.Second, // Very slow
+	}
+	
+	v.refreshIndex = (v.refreshIndex + 1) % len(refreshRates)
+	v.refreshRate = refreshRates[v.refreshIndex]
+	
+	// Restart monitoring with new rate if currently monitoring
+	if v.monitoring {
+		v.stopMonitoring()
+		v.startMonitoring()
+	}
+	
+	// Update title to show current refresh rate
+	v.updateTitleWithRefreshRate()
+}
+
+// updateTitleWithRefreshRate updates titles to show refresh rate
+func (v *MonitorView) updateTitleWithRefreshRate() {
+	rateStr := fmt.Sprintf("%.0fs", v.refreshRate.Seconds())
+	
+	if v.monitoring {
+		v.commandTable.SetTitle(fmt.Sprintf("Command Statistics [ACTIVE - %s]", rateStr))
+		v.clientTable.SetTitle(fmt.Sprintf("Client connections [ACTIVE - %s]", rateStr))
+		v.statsTable.SetTitle(fmt.Sprintf("Server Statistics [ACTIVE - %s]", rateStr))
+		v.infoText.SetTitle(fmt.Sprintf("System Information [ACTIVE - %s]", rateStr))
+	} else {
+		v.commandTable.SetTitle(fmt.Sprintf("Command Statistics [STOPPED - %s]", rateStr))
+		v.clientTable.SetTitle(fmt.Sprintf("Client connections [STOPPED - %s]", rateStr))
+		v.statsTable.SetTitle(fmt.Sprintf("Server Statistics [STOPPED - %s]", rateStr))
+		v.infoText.SetTitle(fmt.Sprintf("System Information [STOPPED - %s]", rateStr))
+	}
+}
+
 // updateTitle updates the title based on monitoring state
 func (v *MonitorView) updateTitle() {
-	if v.monitoring {
-		v.component.SetTitle("Real-time Monitoring [ACTIVE]")
-	} else {
-		v.component.SetTitle("Real-time Monitoring [STOPPED]")
+	v.updateTitleWithRefreshRate()
+}
+
+// clearScreen clears all tables and text
+func (v *MonitorView) clearScreen() {
+	// Clear command table (keep headers)
+	for row := v.commandTable.GetRowCount() - 1; row > 0; row-- {
+		v.commandTable.RemoveRow(row)
+	}
+	
+	// Clear client table (keep headers)
+	for row := v.clientTable.GetRowCount() - 1; row > 0; row-- {
+		v.clientTable.RemoveRow(row)
+	}
+	
+	// Clear stats table
+	v.statsTable.Clear()
+	
+	// Clear info text
+	v.infoText.SetText("")
+}
+
+// loadData loads and displays all monitoring data
+func (v *MonitorView) loadData() {
+	v.loadCommandStats()
+	v.loadClientConnections()
+	v.loadServerStats()
+	v.loadSystemInfo()
+}
+
+// loadCommandStats loads command statistics into the table
+func (v *MonitorView) loadCommandStats() {
+	stats, err := v.redis.GetCommandStats()
+	if err != nil {
+		// Show error in first data row
+		v.commandTable.SetCell(1, 0, tview.NewTableCell("ERROR").SetTextColor(tcell.ColorRed))
+		v.commandTable.SetCell(1, 1, tview.NewTableCell(fmt.Sprintf("Failed to load: %v", err)).SetTextColor(tcell.ColorRed))
+		return
+	}
+
+	// Clear existing data rows (keep header)
+	for row := v.commandTable.GetRowCount() - 1; row > 0; row-- {
+		v.commandTable.RemoveRow(row)
+	}
+
+	// Sort stats by total duration (descending)
+	// Simple bubble sort for small datasets
+	for i := 0; i < len(stats)-1; i++ {
+		for j := 0; j < len(stats)-i-1; j++ {
+			if stats[j].TotalDuration < stats[j+1].TotalDuration {
+				stats[j], stats[j+1] = stats[j+1], stats[j]
+			}
+		}
+	}
+
+	// Add data rows
+	for i, stat := range stats {
+		row := i + 1
+		
+		// Command name
+		v.commandTable.SetCell(row, 0, tview.NewTableCell(stat.Command))
+		
+		// Number of calls
+		v.commandTable.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%.0f", float64(stat.Calls))))
+		
+		// Total duration
+		v.commandTable.SetCell(row, 2, tview.NewTableCell(fmt.Sprintf("%.1f ms", stat.TotalDuration)))
+		
+		// Duration per call
+		v.commandTable.SetCell(row, 3, tview.NewTableCell(fmt.Sprintf("%.1f ms", stat.DurationPerCall)))
+		
+		// Rejected calls
+		v.commandTable.SetCell(row, 4, tview.NewTableCell(fmt.Sprintf("%d", stat.RejectedCalls)))
+		
+		// Failed calls
+		v.commandTable.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf("%d", stat.FailedCalls)))
+		
+		// CallsMaster (not available in standard Redis, show 0)
+		v.commandTable.SetCell(row, 6, tview.NewTableCell("0"))
 	}
 }
 
-// clearScreen clears the screen
-func (v *MonitorView) clearScreen() {
-	v.component.SetText("")
+// loadClientConnections loads client connection information into the table
+func (v *MonitorView) loadClientConnections() {
+	clients, err := v.redis.GetClientList()
+	if err != nil {
+		// Show error in first data row
+		v.clientTable.SetCell(1, 0, tview.NewTableCell("ERROR").SetTextColor(tcell.ColorRed))
+		v.clientTable.SetCell(1, 1, tview.NewTableCell(fmt.Sprintf("Failed to load: %v", err)).SetTextColor(tcell.ColorRed))
+		return
+	}
+
+	// Clear existing data rows (keep header)
+	for row := v.clientTable.GetRowCount() - 1; row > 0; row-- {
+		v.clientTable.RemoveRow(row)
+	}
+
+	// Sort clients by idle time (descending) 
+	for i := 0; i < len(clients)-1; i++ {
+		for j := 0; j < len(clients)-i-1; j++ {
+			if clients[j].Idle < clients[j+1].Idle {
+				clients[j], clients[j+1] = clients[j+1], clients[j]
+			}
+		}
+	}
+
+	// Add data rows
+	for i, client := range clients {
+		row := i + 1
+		
+		// Client address (IP:Port format)
+		clientAddr := client.Address
+		if client.Name != "" {
+			clientAddr = client.Name + " (" + client.Address + ")"
+		}
+		v.clientTable.SetCell(row, 0, tview.NewTableCell(clientAddr))
+		
+		// Total duration (connection age in minutes)
+		v.clientTable.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%.1f mins", client.TotalDuration)))
+		
+		// Idle time in seconds
+		idleStr := fmt.Sprintf("%d s", client.Idle)
+		if client.Idle > 60 {
+			idleStr = fmt.Sprintf("%.1f mins", float64(client.Idle)/60.0)
+		}
+		v.clientTable.SetCell(row, 2, tview.NewTableCell(idleStr))
+		
+		// Last command
+		lastCmd := client.LastCommand
+		if lastCmd == "" {
+			lastCmd = "none"
+		}
+		v.clientTable.SetCell(row, 3, tview.NewTableCell(lastCmd))
+	}
 }
 
-// loadMetrics loads and displays metrics
-func (v *MonitorView) loadMetrics() {
+// loadServerStats loads server statistics into the stats table
+func (v *MonitorView) loadServerStats() {
 	metrics, err := v.redis.GetMetrics()
 	if err != nil {
-		v.component.SetText(fmt.Sprintf("[red]Error loading metrics: %s", err))
+		v.statsTable.Clear()
+		v.statsTable.SetCell(0, 0, tview.NewTableCell("Error").SetTextColor(tcell.ColorRed))
+		v.statsTable.SetCell(0, 1, tview.NewTableCell(fmt.Sprintf("Failed to load: %v", err)).SetTextColor(tcell.ColorRed))
 		return
 	}
 
-	// Get Redis info for additional details
-	info, err := v.redis.Info()
-	if err != nil {
-		v.component.SetText(fmt.Sprintf("[red]Error loading Redis info: %s", err))
-		return
-	}
-
-	// Get current text and append new metrics
-	currentText := v.component.GetText(false)
-	timestamp := time.Now().Format("15:04:05")
-
+	v.statsTable.Clear()
+	
 	// Calculate hit rate
 	hitRate := float64(0)
 	if metrics.KeyspaceHits+metrics.KeyspaceMisses > 0 {
 		hitRate = float64(metrics.KeyspaceHits) / float64(metrics.KeyspaceHits+metrics.KeyspaceMisses) * 100
 	}
 
-	// Parse additional metrics from info
+	// Server statistics table
+	stats := [][]string{
+		{"Connected Clients", fmt.Sprintf("%d", metrics.ConnectedClients)},
+		{"Used Memory", humanize.Bytes(uint64(metrics.UsedMemory))},
+		{"Used Memory RSS", humanize.Bytes(uint64(metrics.UsedMemoryRss))},
+		{"Total Commands", fmt.Sprintf("%d", metrics.TotalCommandsProcessed)},
+		{"Ops/sec", fmt.Sprintf("%d", metrics.InstantaneousOpsPerSec)},
+		{"Keyspace Hits", fmt.Sprintf("%d", metrics.KeyspaceHits)},
+		{"Keyspace Misses", fmt.Sprintf("%d", metrics.KeyspaceMisses)},
+		{"Hit Rate", fmt.Sprintf("%.2f%%", hitRate)},
+		{"Uptime", getFormattedUptime(metrics.UptimeInSeconds)},
+	}
+
+	for i, stat := range stats {
+		v.statsTable.SetCell(i, 0, tview.NewTableCell(stat[0]).SetTextColor(tcell.ColorGreen))
+		v.statsTable.SetCell(i, 1, tview.NewTableCell(stat[1]).SetTextColor(tcell.ColorWhite))
+	}
+}
+
+// loadSystemInfo loads system information
+func (v *MonitorView) loadSystemInfo() {
+	info, err := v.redis.Info()
+	if err != nil {
+		v.infoText.SetText(fmt.Sprintf("[red]Error loading Redis info: %s", err))
+		return
+	}
+
+	timestamp := time.Now().Format("15:04:05")
+	
+	// Get cluster information
+	clusterEnabled := getInfoValue(info, "cluster_enabled", "0")
 	slowlogLen := getInfoValue(info, "slowlog_len", "0")
 	totalConnections := getInfoValue(info, "total_connections_received", "0")
 	rejectedConnections := getInfoValue(info, "rejected_connections", "0")
+	
+	infoText := fmt.Sprintf(`[yellow]Last Updated: %s[white]
 
-	// Get cluster information and node details
-	clusterEnabled := getInfoValue(info, "cluster_enabled", "0")
-	nodeTable := ""
-
-	if clusterEnabled == "1" {
-		// Get cluster nodes information
-		nodeTable = v.getClusterNodesTable()
-	} else {
-		// For standalone, show current node info
-		role := getInfoValue(info, "role", "master")
-		nodeTable = fmt.Sprintf("  [green]%-15s %-10s %-15s %-10s[white]\n  %-15s %-10s %-15s %-10s",
-			"Node ID", "Role", "Host:Port", "Status",
-			"localhost", role, "127.0.0.1:6379", "connected")
-	}
-
-	// Format metrics with enhanced information
-	metricsText := fmt.Sprintf(`[yellow]%s[white] - Redis Metrics:
-
-[cyan]━━━ Client Connections ━━━[white]
-  [green]Connected Clients:[white] %d
+[cyan]━━━ Connection Details ━━━[white]
   [green]Total Connections:[white] %s
   [green]Rejected Connections:[white] %s
 
-[cyan]━━━ Memory Usage ━━━[white]
-  [green]Used Memory:[white] %s
-  [green]Used Memory RSS:[white] %s
-
-[cyan]━━━ Command Statistics ━━━[white]
-  [green]Total Commands:[white] %d
-  [green]Ops/sec:[white] %d
-  [green]Keyspace Hits:[white] %d
-  [green]Keyspace Misses:[white] %d
-  [green]Hit Rate:[white] %.2f%%
-
-[cyan]━━━ Slow Queries Log ━━━[white]
+[cyan]━━━ Performance ━━━[white]
   [green]Slow Log Length:[white] %s
 
-[cyan]━━━ Nodes ━━━[white]
-%s
-
+[cyan]━━━ Cluster Info ━━━[white]
+  [green]Cluster Enabled:[white] %s
 `,
 		timestamp,
-		metrics.ConnectedClients,
 		totalConnections,
 		rejectedConnections,
-		humanize.Bytes(uint64(metrics.UsedMemory)),
-		humanize.Bytes(uint64(metrics.UsedMemoryRss)),
-		metrics.TotalCommandsProcessed,
-		metrics.InstantaneousOpsPerSec,
-		metrics.KeyspaceHits,
-		metrics.KeyspaceMisses,
-		hitRate,
 		slowlogLen,
-		nodeTable,
+		clusterEnabled,
 	)
 
-	// Append to existing text
-	newText := currentText + metricsText
-
-	// Keep only last 50 lines to prevent memory issues
-	lines := splitLines(newText)
-	if len(lines) > 50 {
-		lines = lines[len(lines)-50:]
-		newText = joinLines(lines)
+	if clusterEnabled == "1" {
+		infoText += "\n[cyan]━━━ Cluster Nodes ━━━[white]\n"
+		infoText += v.getClusterNodesInfo()
 	}
 
-	v.component.SetText(newText)
+	// Add keyboard shortcuts help
+	infoText += fmt.Sprintf(`
 
-	// Scroll to bottom
-	v.component.ScrollToEnd()
+[cyan]━━━ Keyboard Shortcuts ━━━[white]
+  [green]s/S:[white] Start/Stop monitoring
+  [green]d/D:[white] Change refresh rate (%.0fs)
+  [green]c/C:[white] Clear all tables
+  [green]r/R:[white] Manual refresh
+  [green]?:[white] Help
+`, v.refreshRate.Seconds())
+
+	v.infoText.SetText(infoText)
 }
 
-// getClusterNodesTable returns formatted cluster nodes information
-func (v *MonitorView) getClusterNodesTable() string {
-	// Try to get cluster nodes information
+// getClusterNodesInfo returns formatted cluster nodes information for text display
+func (v *MonitorView) getClusterNodesInfo() string {
 	result, err := v.redis.ClusterNodes()
 	if err != nil {
 		return "  [red]Error getting cluster nodes info[white]"
 	}
 
-	// Parse cluster nodes output
 	lines := splitLines(result)
 	if len(lines) == 0 {
 		return "  [yellow]No cluster nodes found[white]"
 	}
 
-	table := fmt.Sprintf("  [green]%-40s %-10s %-20s %-10s[white]\n", "Node ID", "Role", "Host:Port", "Status")
-	table += fmt.Sprintf("  [green]%s[white]\n", "────────────────────────────────────────────────────────────────────────────────")
-
+	info := ""
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 
-		// Parse node line format: <id> <ip:port@cport> <flags> <master> <ping-sent> <pong-recv> <config-epoch> <link-state> <slot> <slot> ... <slot>
 		parts := strings.Fields(line)
 		if len(parts) < 8 {
 			continue
 		}
 
-		nodeID := parts[0][:8] + "..."              // Truncate node ID for display
-		hostPort := strings.Split(parts[1], "@")[0] // Remove cluster port
+		nodeID := parts[0][:8] + "..."
+		hostPort := strings.Split(parts[1], "@")[0]
 		flags := parts[2]
 		linkState := parts[7]
 
-		// Determine role from flags
 		role := "slave"
 		if strings.Contains(flags, "master") {
 			role = "master"
@@ -280,18 +502,21 @@ func (v *MonitorView) getClusterNodesTable() string {
 			role += " (self)"
 		}
 
-		// Color code status
-		status := linkState
-		if linkState == "connected" {
-			status = "[green]connected[white]"
-		} else {
-			status = "[red]" + linkState + "[white]"
+		statusColor := "green"
+		if linkState != "connected" {
+			statusColor = "red"
 		}
 
-		table += fmt.Sprintf("  %-40s %-10s %-20s %s\n", nodeID, role, hostPort, status)
+		info += fmt.Sprintf("  [green]%s[white] - [yellow]%s[white] - [cyan]%s[white] - [%s]%s[white]\n", 
+			nodeID, role, hostPort, statusColor, linkState)
 	}
 
-	return table
+	return info
+}
+
+// Refresh refreshes the monitor view
+func (v *MonitorView) Refresh() {
+	v.loadData()
 }
 
 // getInfoValue safely extracts a value from info map
@@ -302,11 +527,6 @@ func getInfoValue(info map[string]interface{}, key, defaultValue string) string 
 		}
 	}
 	return defaultValue
-}
-
-// Refresh refreshes the monitor view
-func (v *MonitorView) Refresh() {
-	v.loadMetrics()
 }
 
 // getFormattedUptime formats uptime in seconds to human readable format with minutes

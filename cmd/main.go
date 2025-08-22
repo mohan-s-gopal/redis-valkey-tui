@@ -6,9 +6,16 @@ import (
 	"log"
 	"os"
 
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/ui"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/ui"
+)
+
+// Version information
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
 )
 
 // Main is the main entry point
@@ -21,8 +28,14 @@ func Main() {
 		verbose  = flag.Int("v", 0, "Verbosity level (0=ERROR, 1=WARN, 2=INFO, 3=DEBUG, 4=TRACE)")
 		console  = flag.Bool("console", false, "Enable console logging (logs will appear in stderr)")
 		help     = flag.Bool("help", false, "Show help")
+		version  = flag.Bool("version", false, "Show version information")
 	)
 	flag.Parse()
+
+	if *version {
+		showVersion()
+		return
+	}
 
 	if *help {
 		showHelp()
@@ -52,7 +65,7 @@ func Main() {
 	}
 	defer logger.Close()
 
-	logger.Info("Starting redis-cli-dashboard...")
+	logger.Info("Starting redis-valkey-tui...")
 	logger.Debugf("Verbosity level: %d, Console output: %t", *verbose, *console)
 
 	// Load configuration
@@ -82,10 +95,16 @@ func Main() {
 	}
 }
 
-func showHelp() {
-	fmt.Print(`redis-cli-dashboard - A k9s-inspired TUI client for Redis/Valkey
+func showVersion() {
+	fmt.Printf("redis-valkey-tui version %s\n", Version)
+	fmt.Printf("Build time: %s\n", BuildTime)
+	fmt.Printf("Git commit: %s\n", GitCommit)
+}
 
-Usage: redis-cli-dashboard [options]
+func showHelp() {
+	fmt.Print(`redis-valkey-tui - A k9s-inspired TUI client for Redis/Valkey
+
+Usage: redis-valkey-tui [options]
 
 Options:
   -host string
@@ -102,9 +121,11 @@ Options:
         Enable console logging (logs will also appear in stderr)
   -help
         Show this help
+  -version
+        Show version information
 
 Logging:
-  By default, logs are written to ~/.redis-cli-dashboard/logs/app.log
+  By default, logs are written to ~/.redis-valkey-tui/logs/app.log
   Use -v 3 or -v 4 for detailed debugging information
   Use -console to see logs in terminal while app is running
 
@@ -134,13 +155,14 @@ Key Bindings (CLI view):
   Ctrl+L      Clear screen
 
 Examples:
-  redis-cli-dashboard                                      # Connect to localhost:6379 with INFO logging
-  redis-cli-dashboard -v 4 -console                       # Run with TRACE logging to console
-  redis-cli-dashboard -host redis.example.com -port 6380  # Connect to remote server
-  redis-cli-dashboard -password mypassword -db 1 -v 3     # Connect with auth, DB selection, and DEBUG logging
+  redis-valkey-tui                                      # Connect to localhost:6379 with INFO logging
+  redis-valkey-tui -v 4 -console                       # Run with TRACE logging to console
+  redis-valkey-tui -host redis.example.com -port 6380  # Connect to remote server
+  redis-valkey-tui -password mypassword -db 1 -v 3     # Connect with auth, DB selection, and DEBUG logging
+  redis-valkey-tui --version                           # Show version information
 
-For debugging issues, use: redis-cli-dashboard -v 4 -console
+For debugging issues, use: redis-valkey-tui -v 4 -console
 
-For more information, visit: https://github.com/username/redis-cli-dashboard
+For more information, visit: https://github.com/mohan-s-gopal/redis-valkey-tui
 `)
 }

@@ -1,4 +1,4 @@
-module redis-cli-dashboard
+module github.com/mohan-s-gopal/redis-valkey-tui
 
 go 1.21
 

@@ -1,7 +1,7 @@
-# redis-cli-dashboard
+# redis-valkey-tui
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/mohan-s-gopal/redis-cli-dashboard)](https://goreportcard.com/report/github.com/mohan-s-gopal/redis-cli-dashboard)
-[![Release](https://img.shields.io/github/release/mohan-s-gopal/redis-cli-dashboard.svg)](https://github.com/mohan-s-gopal/redis-cli-dashboard/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mohan-s-gopal/redis-valkey-tui)](https://goreportcard.com/report/github.com/mohan-s-gopal/redis-valkey-tui)
+[![Release](https://img.shields.io/github/release/mohan-s-gopal/redis-valkey-tui.svg)](https://github.com/mohan-s-gopal/redis-valkey-tui/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built with Go. Provides an intuitive, keyboard-driven interface for Redis database management with real-time monitoring, advanced key management, and built-in CLI functionality.
@@ -53,47 +53,47 @@ A powerful, k9s-inspired Terminal User Interface (TUI) Redis/Valkey client built
 #### Option 1: Download Pre-built Binaries (Recommended)
 ```bash
 # Linux (x86_64)
-curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Linux_x86_64.tar.gz | tar xz
-sudo mv redis-cli-dashboard /usr/local/bin/
+curl -L https://github.com/mohan-s-gopal/redis-valkey-tui/releases/latest/download/redis-valkey-tui_Linux_x86_64.tar.gz | tar xz
+sudo mv redis-valkey-tui /usr/local/bin/
 
 # Linux (ARM64)
-curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Linux_arm64.tar.gz | tar xz
-sudo mv redis-cli-dashboard /usr/local/bin/
+curl -L https://github.com/mohan-s-gopal/redis-valkey-tui/releases/latest/download/redis-valkey-tui_Linux_arm64.tar.gz | tar xz
+sudo mv redis-valkey-tui /usr/local/bin/
 
 # macOS (Intel)
-curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Darwin_x86_64.tar.gz | tar xz
-sudo mv redis-cli-dashboard /usr/local/bin/
+curl -L https://github.com/mohan-s-gopal/redis-valkey-tui/releases/latest/download/redis-valkey-tui_Darwin_x86_64.tar.gz | tar xz
+sudo mv redis-valkey-tui /usr/local/bin/
 
 # macOS (Apple Silicon)
-curl -L https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Darwin_arm64.tar.gz | tar xz
-sudo mv redis-cli-dashboard /usr/local/bin/
+curl -L https://github.com/mohan-s-gopal/redis-valkey-tui/releases/latest/download/redis-valkey-tui_Darwin_arm64.tar.gz | tar xz
+sudo mv redis-valkey-tui /usr/local/bin/
 
 # Windows (PowerShell)
-Invoke-WebRequest -Uri "https://github.com/mohan-s-gopal/redis-cli-dashboard/releases/latest/download/redis-cli-dashboard_Windows_x86_64.zip" -OutFile "redis-cli-dashboard.zip"
-Expand-Archive -Path "redis-cli-dashboard.zip" -DestinationPath "."
+Invoke-WebRequest -Uri "https://github.com/mohan-s-gopal/redis-valkey-tui/releases/latest/download/redis-valkey-tui_Windows_x86_64.zip" -OutFile "redis-valkey-tui.zip"
+Expand-Archive -Path "redis-valkey-tui.zip" -DestinationPath "."
 # Add to PATH or move to desired location
 ```
 
 #### Option 2: Install via Go
 ```bash
-go install github.com/mohan-s-gopal/redis-cli-dashboard@latest
+go install github.com/mohan-s-gopal/redis-valkey-tui@latest
 ```
 
 #### Option 3: Build from Source
 ```bash
-git clone https://github.com/mohan-s-gopal/redis-cli-dashboard.git
-cd redis-cli-dashboard
-go build -o redis-cli-dashboard ./cmd
+git clone https://github.com/mohan-s-gopal/redis-valkey-tui.git
+cd redis-valkey-tui
+go build -o redis-valkey-tui ./cmd
 ```
 
 ### Verify Installation
 
 ```bash
 # Check version
-redis-cli-dashboard -version
+redis-valkey-tui -version
 
 # Test connection to local Redis
-redis-cli-dashboard
+redis-valkey-tui
 
 # Should display the TUI interface if Redis is running on localhost:6379
 ```
@@ -102,19 +102,19 @@ redis-cli-dashboard
 
 ```bash
 # Start with default settings (localhost:6379)
-./redis-cli-dashboard
+./redis-valkey-tui
 
 # Connect to specific Redis instance
-./redis-cli-dashboard -host redis.example.com -port 6380 -db 1
+./redis-valkey-tui -host redis.example.com -port 6380 -db 1
 
 # Enable debug logging
-./redis-cli-dashboard -v 2
+./redis-valkey-tui -v 2
 ```
 
 ## 📋 Command Line Options
 
 ```
-Usage: redis-cli-dashboard [OPTIONS]
+Usage: redis-valkey-tui [OPTIONS]
 
 Connection Options:
   -host string        Redis host (default "localhost")
@@ -123,19 +123,19 @@ Connection Options:
   -db int             Redis database number (default 0)
 
 Application Options:
-  -config string     Config file path (default "~/.redis-cli-dashboard/config.yaml")
+  -config string     Config file path (default "~/.redis-valkey-tui/config.yaml")
   -v int             Verbosity level 0-4 (default 0)
   -version           Show version information
 
 Examples:
-  redis-cli-dashboard                                    # Connect to localhost:6379
-  redis-cli-dashboard -host prod.redis.com -port 6380    # Connect to remote Redis
-  redis-cli-dashboard -db 2 -v 2                         # Use database 2 with debug logging
+  redis-valkey-tui                                    # Connect to localhost:6379
+  redis-valkey-tui -host prod.redis.com -port 6380    # Connect to remote Redis
+  redis-valkey-tui -db 2 -v 2                         # Use database 2 with debug logging
 ```
 
 ### Configuration
 
-Create `~/.redis-cli-dashboard/config.json`:
+Create `~/.redis-valkey-tui/config.json`:
 
 ```json
 {
@@ -279,10 +279,10 @@ For secure Redis connections, enable TLS in your configuration:
 
 ### Building from Source
 ```bash
-git clone https://github.com/mohan-s-gopal/redis-cli-dashboard.git
-cd redis-cli-dashboard
+git clone https://github.com/mohan-s-gopal/redis-valkey-tui.git
+cd redis-valkey-tui
 go mod tidy
-go build -o redis-cli-dashboard ./cmd
+go build -o redis-valkey-tui ./cmd
 ```
 
 ### Running Tests

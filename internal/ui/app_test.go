@@ -2,9 +2,9 @@ package ui
 
 import (
 	"github.com/stretchr/testify/assert"
-	"redis-cli-dashboard/internal/config"
-	"redis-cli-dashboard/internal/logger"
-	"redis-cli-dashboard/internal/redis"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/config"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/logger"
+	"github.com/mohan-s-gopal/redis-valkey-tui/internal/redis"
 	"testing"
 )
 
